@@ -89,8 +89,7 @@ public class MappingParser {
 
 		// we first create all the ClassHandles BEFORE creating the methods because we need references to
 		// the ClassHandle for method parameters
-		mappings.classes =
-				classes.stream().map(clazz -> mappings.new ClassHandle(clazz.original, clazz.obfuscated)).toList();
+		mappings.classes = classes.stream().map(clazz -> new ClassHandle(clazz.original, clazz.obfuscated)).toList();
 		for (var clazz : classes) {
 			try {
 				ClassHandle handle = mappings.getClass(clazz.original);
@@ -128,7 +127,7 @@ public class MappingParser {
 					} catch (ClassNotFoundException ___) {
 						if (!fakeHandles.containsKey(typeName)) {
 							LOGGER.log(Level.FINER, "Cannot find class {0}", typeName);
-							fakeHandles.put(typeName, mappings.new ClassHandle(typeName, typeName)); // not ideal
+							fakeHandles.put(typeName, new ClassHandle(typeName, typeName)); // not ideal
 						}
 						handle = fakeHandles.get(typeName);
 					}

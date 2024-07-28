@@ -3,6 +3,7 @@ package fr.skytasul.reflection;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.Arrays;
@@ -14,9 +15,9 @@ public class VersionedMappingsImplementation implements VersionedMappings {
 	public final int minor;
 	public final int patch;
 
-	protected List<ClassHandle> classes;
+	public List<ClassHandle> classes;
 
-	protected VersionedMappingsImplementation(int major, int minor, int patch) {
+	public VersionedMappingsImplementation(int major, int minor, int patch) {
 		this.major = major;
 		this.minor = minor;
 		this.patch = patch;
@@ -38,26 +39,6 @@ public class VersionedMappingsImplementation implements VersionedMappings {
 	}
 
 	@Override
-	public boolean isVersion(int major, int minor, int patch) {
-		return this.major == major && this.minor == minor && this.patch == patch;
-	}
-
-	@Override
-	public boolean isAfter(int major, int minor, int patch) {
-		if (this.major > major)
-			return true;
-		if (this.major < major)
-			return false;
-
-		if (this.minor > minor)
-			return true;
-		if (this.minor < minor)
-			return false;
-
-		return this.patch >= patch;
-	}
-
-	@Override
 	public @NotNull ClassHandle getClass(@NotNull String key) throws ClassNotFoundException {
 		for (ClassHandle clazz : classes)
 			if (clazz.key.equals(key))
@@ -66,7 +47,7 @@ public class VersionedMappingsImplementation implements VersionedMappings {
 	}
 
 	// load classes first, then fields and methods
-	public class ClassHandle implements VersionedMappings.MappedClass {
+	public static class ClassHandle implements MappedClass {
 
 		public final @NotNull String key, remapped;
 
@@ -77,7 +58,7 @@ public class VersionedMappingsImplementation implements VersionedMappings {
 		protected List<FieldHandle> fields;
 		protected List<MethodHandle> methods;
 
-		protected ClassHandle(String key, String remapped) {
+		public ClassHandle(String key, String remapped) {
 			this.key = key;
 			this.remapped = remapped;
 		}
@@ -87,11 +68,19 @@ public class VersionedMappingsImplementation implements VersionedMappings {
 			return key;
 		}
 
+		public @NotNull String getMappedName() {
+			return remapped;
+		}
+
 		@Override
 		public @NotNull Type getArrayType() {
 			if (arrayType == null)
 				arrayType = new ClassHandleArray();
 			return arrayType;
+		}
+
+		public @NotNull List<@NotNull FieldHandle> getFields() {
+			return fields;
 		}
 
 		@Override
@@ -101,6 +90,7 @@ public class VersionedMappingsImplementation implements VersionedMappings {
 			return cachedClass;
 		}
 
+		@Override
 		public @NotNull FieldHandle getField(@NotNull String key) throws NoSuchFieldException {
 			for (FieldHandle field : fields)
 				if (field.key.equals(key))
@@ -109,11 +99,6 @@ public class VersionedMappingsImplementation implements VersionedMappings {
 		}
 
 		@Override
-		public @NotNull Field getMappedField(@NotNull String key)
-				throws NoSuchFieldException, SecurityException, ClassNotFoundException {
-			return getField(key).getMappedField();
-		}
-
 		public @NotNull MethodHandle getMethod(@NotNull String key, @NotNull Type... parameterTypes)
 				throws NoSuchMethodException {
 			for (MethodHandle method : methods)
@@ -126,6 +111,13 @@ public class VersionedMappingsImplementation implements VersionedMappings {
 		public @NotNull Method getMappedMethod(@NotNull String key, @NotNull Type... parameterTypes)
 				throws NoSuchMethodException, SecurityException, ClassNotFoundException {
 			return getMethod(key, parameterTypes).getMappedMethod();
+		}
+
+		@Override
+		public @NotNull MappedConstructor getConstructor(@NotNull Type... parameterTypes)
+				throws NoSuchMethodException, SecurityException, ClassNotFoundException {
+			var constructor = getMappedClass().getDeclaredConstructor(getClassesFromHandles(parameterTypes));
+			return new VersionedMappingsTransparent.TransparentConstructor(constructor);
 		}
 
 		@Override
@@ -148,17 +140,18 @@ public class VersionedMappingsImplementation implements VersionedMappings {
 
 		}
 
-		public class FieldHandle {
+		public class FieldHandle implements MappedField {
 
 			public final @NotNull String key, remapped;
 
 			private @Nullable Field cachedField;
 
-			protected FieldHandle(@NotNull String key, @NotNull String remapped) {
+			public FieldHandle(@NotNull String key, @NotNull String remapped) {
 				this.key = key;
 				this.remapped = remapped;
 			}
 
+			@Override
 			public @NotNull Field getMappedField() throws NoSuchFieldException, SecurityException, ClassNotFoundException {
 				if (cachedField == null) {
 					cachedField = getMappedClass().getDeclaredField(remapped);
@@ -167,22 +160,36 @@ public class VersionedMappingsImplementation implements VersionedMappings {
 				return cachedField;
 			}
 
+			@Override
+			public Object get(@Nullable Object instance) throws IllegalArgumentException, IllegalAccessException,
+					NoSuchFieldException, SecurityException, ClassNotFoundException {
+				return getMappedField().get(instance);
+			}
+
+			@Override
+			public void set(@Nullable Object instance, Object value)
+					throws IllegalArgumentException, IllegalAccessException, NoSuchFieldException, SecurityException,
+					ClassNotFoundException {
+				getMappedField().set(instance, value);
+			}
+
 		}
 
-		public class MethodHandle {
+		public class MethodHandle implements MappedMethod {
 
 			public final @NotNull String key, remapped;
 			public final @NotNull Type @NotNull [] parameterTypes;
 
 			private @Nullable Method cachedMethod;
 
-			protected MethodHandle(@NotNull String key, @NotNull String remapped,
+			public MethodHandle(@NotNull String key, @NotNull String remapped,
 					@NotNull Type @NotNull [] parameterTypes) {
 				this.key = key;
 				this.remapped = remapped;
 				this.parameterTypes = parameterTypes;
 			}
 
+			@Override
 			public @NotNull Method getMappedMethod()
 					throws NoSuchMethodException, SecurityException, ClassNotFoundException {
 				if (cachedMethod == null) {
@@ -192,25 +199,32 @@ public class VersionedMappingsImplementation implements VersionedMappings {
 				return cachedMethod;
 			}
 
-		}
-
-		private static Class<?>[] getClassesFromHandles(Type[] handles) throws ClassNotFoundException {
-			Class<?>[] array = new Class<?>[handles.length];
-			for (int i = 0; i < handles.length; i++) {
-				Class<?> type;
-				if (handles[i] instanceof Class<?> clazz)
-					type = clazz;
-				else if (handles[i] instanceof ClassHandle handle)
-					type = handle.getMappedClass();
-				else if (handles[i] instanceof ClassHandleArray handleArray)
-					type = handleArray.getMappedClass();
-				else
-					throw new IllegalArgumentException();
-				array[i] = type;
+			@Override
+			public Object invoke(@Nullable Object instance, @Nullable Object... args)
+					throws IllegalAccessException, IllegalArgumentException, InvocationTargetException,
+					NoSuchMethodException, SecurityException, ClassNotFoundException {
+				return getMappedMethod().invoke(instance, args);
 			}
-			return array;
+
 		}
 
+	}
+
+	protected static Class<?>[] getClassesFromHandles(Type[] handles) throws ClassNotFoundException {
+		Class<?>[] array = new Class<?>[handles.length];
+		for (int i = 0; i < handles.length; i++) {
+			Class<?> type;
+			if (handles[i] instanceof Class<?> clazz)
+				type = clazz;
+			else if (handles[i] instanceof MappedClass mapped)
+				type = mapped.getMappedClass();
+			else if (handles[i] instanceof ClassHandle.ClassHandleArray handleArray)
+				type = handleArray.getMappedClass();
+			else
+				throw new IllegalArgumentException();
+			array[i] = type;
+		}
+		return array;
 	}
 
 }
