@@ -13,9 +13,9 @@ import java.util.stream.Stream;
 public class MappingFileWriter {
 
 	private final @NotNull Path path;
-	private final @NotNull List<VersionedMappingsImplementation> mappings;
+	private final @NotNull List<VersionedMappings> mappings;
 
-	public MappingFileWriter(@NotNull Path path, @NotNull List<VersionedMappingsImplementation> mappings) {
+	public MappingFileWriter(@NotNull Path path, @NotNull List<VersionedMappings> mappings) {
 		this.path = path;
 		this.mappings = mappings;
 	}
@@ -37,9 +37,10 @@ public class MappingFileWriter {
 		int headerLength = 1 + mappings.size() + 1;
 		int lastLine = headerLength - 1;
 		for (var mapping : mappings) {
-			int mappingLength = mapping.classes.stream().mapToInt(c -> c.fields.size() + c.methods.size() + 1).sum();
-			writer.append("# reflection-remapper | %d.%d.%d %d-%d".formatted(mapping.major, mapping.minor, mapping.patch,
-					lastLine + 1, lastLine + mappingLength));
+			int mappingLength =
+					mapping.getClasses().stream().mapToInt(c -> c.getFields().size() + c.getMethods().size() + 1).sum();
+			writer.append("# reflection-remapper | %d.%d.%d %d-%d".formatted(mapping.getMajor(), mapping.getMinor(),
+					mapping.getPatch(), lastLine + 1, lastLine + mappingLength));
 			writer.newLine();
 			lastLine += mappingLength;
 		}
@@ -48,22 +49,23 @@ public class MappingFileWriter {
 		writer.newLine();
 	}
 
-	private void writeSingleMapping(@NotNull BufferedWriter writer, @NotNull VersionedMappingsImplementation mappings)
+	private void writeSingleMapping(@NotNull BufferedWriter writer, @NotNull VersionedMappings mappings)
 			throws IOException {
-		for (var mappedClass : mappings.classes) {
-			writer.append("%s -> %s".formatted(mappedClass.key, mappedClass.remapped));
+		for (var mappedClass : mappings.getClasses()) {
+			writer.append("%s -> %s".formatted(mappedClass.getOriginalName(), mappedClass.getObfuscatedName()));
 			writer.newLine();
 
-			for (var mappedField : mappedClass.fields) {
-				writer.append("    %s -> %s".formatted(mappedField.key, mappedField.remapped));
+			for (var mappedField : mappedClass.getFields()) {
+				writer.append("    %s -> %s".formatted(mappedField.getOriginalName(), mappedField.getObfuscatedName()));
 				writer.newLine();
 			}
 
-			for (var mappedMethod : mappedClass.methods) {
-				String parameters = Stream.of(mappedMethod.parameterTypes)
+			for (var mappedMethod : mappedClass.getMethods()) {
+				String parameters = Stream.of(mappedMethod.getParameterTypes())
 						.map(parameter -> parameter.getTypeName())
 						.collect(Collectors.joining(","));
-				writer.append("    %s(%s) -> %s".formatted(mappedMethod.key, parameters, mappedMethod.remapped));
+				writer.append("    %s(%s) -> %s".formatted(mappedMethod.getOriginalName(), parameters,
+						mappedMethod.getObfuscatedName()));
 				writer.newLine();
 			}
 		}

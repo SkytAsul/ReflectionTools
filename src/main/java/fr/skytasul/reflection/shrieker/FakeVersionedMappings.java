@@ -1,11 +1,17 @@
 package fr.skytasul.reflection.shrieker;
 
 import fr.skytasul.reflection.VersionedMappings;
+import fr.skytasul.reflection.VersionedMappings.MappedClass.MappedField;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import java.lang.reflect.*;
 import java.util.*;
 
+/**
+ * Wrapped reflection methods such as {@link MappedField#get(Object)} will return <code>null</code>,
+ * which is useful for generating mappings on different software versions just by following code
+ * path).
+ */
 public class FakeVersionedMappings implements VersionedMappings {
 
 	private final int major;
@@ -40,15 +46,30 @@ public class FakeVersionedMappings implements VersionedMappings {
 		return classes.computeIfAbsent(name, FakeMappedClass::new);
 	}
 
+	@Override
+	public Collection<? extends MappedClass> getClasses() {
+		return classes.values();
+	}
+
 	class FakeMappedClass implements MappedClass {
 
-		public final @NotNull String key;
+		public final @NotNull String original;
 
 		public final Map<String, FakeMappedField> fields = new HashMap<>(4);
 		public final List<FakeMappedMethod> methods = new ArrayList<>(4);
 
-		public FakeMappedClass(@NotNull String key) {
-			this.key = key;
+		public FakeMappedClass(@NotNull String original) {
+			this.original = original;
+		}
+
+		@Override
+		public @NotNull String getOriginalName() {
+			return original;
+		}
+
+		@Override
+		public @NotNull String getObfuscatedName() {
+			throw new UnsupportedOperationException();
 		}
 
 		@Override
@@ -62,20 +83,30 @@ public class FakeVersionedMappings implements VersionedMappings {
 		}
 
 		@Override
-		public @NotNull MappedField getField(@NotNull String key) throws NoSuchFieldException {
-			return fields.computeIfAbsent(key, FakeMappedField::new);
+		public @NotNull MappedField getField(@NotNull String original) throws NoSuchFieldException {
+			return fields.computeIfAbsent(original, FakeMappedField::new);
 		}
 
 		@Override
-		public @NotNull MappedMethod getMethod(@NotNull String key, @NotNull Type... parameterTypes)
+		public Collection<? extends MappedField> getFields() {
+			return fields.values();
+		}
+
+		@Override
+		public @NotNull MappedMethod getMethod(@NotNull String original, @NotNull Type... parameterTypes)
 				throws NoSuchMethodException, ClassNotFoundException {
 			for (var mappedMethod : methods) {
-				if (mappedMethod.key.equals(key) && Arrays.equals(mappedMethod.parameterTypes, parameterTypes))
+				if (mappedMethod.original.equals(original) && Arrays.equals(mappedMethod.parameterTypes, parameterTypes))
 					return mappedMethod;
 			}
-			var mappedMethod = new FakeMappedMethod(key, parameterTypes);
+			var mappedMethod = new FakeMappedMethod(original, parameterTypes);
 			methods.add(mappedMethod);
 			return mappedMethod;
+		}
+
+		@Override
+		public Collection<? extends MappedMethod> getMethods() {
+			return methods;
 		}
 
 		@Override
@@ -96,7 +127,17 @@ public class FakeVersionedMappings implements VersionedMappings {
 			};
 		}
 
-		record FakeMappedField(@NotNull String key) implements MappedField {
+		record FakeMappedField(@NotNull String original) implements MappedField {
+
+			@Override
+			public @NotNull String getOriginalName() {
+				return original;
+			}
+
+			@Override
+			public @NotNull String getObfuscatedName() {
+				throw new UnsupportedOperationException();
+			}
 
 			@Override
 			public Field getMappedField() throws NoSuchFieldException, SecurityException, ClassNotFoundException {
@@ -115,7 +156,22 @@ public class FakeVersionedMappings implements VersionedMappings {
 
 		}
 
-		record FakeMappedMethod(@NotNull String key, @NotNull Type[] parameterTypes) implements MappedMethod {
+		record FakeMappedMethod(@NotNull String original, @NotNull Type[] parameterTypes) implements MappedMethod {
+
+			@Override
+			public @NotNull String getOriginalName() {
+				return original;
+			}
+
+			@Override
+			public @NotNull String getObfuscatedName() {
+				throw new UnsupportedOperationException();
+			}
+
+			@Override
+			public @NotNull Type @NotNull [] getParameterTypes() {
+				return parameterTypes;
+			}
 
 			@Override
 			public Method getMappedMethod() throws NoSuchMethodException, SecurityException, ClassNotFoundException {

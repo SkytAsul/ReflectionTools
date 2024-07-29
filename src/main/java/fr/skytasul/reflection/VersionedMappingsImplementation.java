@@ -7,6 +7,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 public class VersionedMappingsImplementation implements VersionedMappings {
@@ -39,37 +40,48 @@ public class VersionedMappingsImplementation implements VersionedMappings {
 	}
 
 	@Override
-	public @NotNull ClassHandle getClass(@NotNull String key) throws ClassNotFoundException {
+	public Collection<? extends MappedClass> getClasses() {
+		return classes;
+	}
+
+	@Override
+	public @NotNull ClassHandle getClass(@NotNull String original) throws ClassNotFoundException {
 		for (ClassHandle clazz : classes)
-			if (clazz.key.equals(key))
+			if (clazz.original.equals(original))
 				return clazz;
-		throw new ClassNotFoundException(key);
+		throw new ClassNotFoundException(original);
 	}
 
 	// load classes first, then fields and methods
 	public static class ClassHandle implements MappedClass {
 
-		public final @NotNull String key, remapped;
+		public final @NotNull String original, obfuscated;
 
 		private @Nullable ClassHandleArray arrayType;
 
 		private @Nullable Class<?> cachedClass;
 
-		protected List<FieldHandle> fields;
-		protected List<MethodHandle> methods;
+		public List<FieldHandle> fields;
+		public List<MethodHandle> methods;
 
-		public ClassHandle(String key, String remapped) {
-			this.key = key;
-			this.remapped = remapped;
+		public ClassHandle(String original, String obfuscated) {
+			this.original = original;
+			this.obfuscated = obfuscated;
+		}
+
+		@Override
+		public @NotNull String getOriginalName() {
+			return original;
+		}
+
+		@Override
+		public @NotNull String getObfuscatedName() {
+			return obfuscated;
 		}
 
 		@Override
 		public String getTypeName() {
-			return key;
-		}
-
-		public @NotNull String getMappedName() {
-			return remapped;
+			return original;
 		}
 
 		@Override
@@ -79,38 +91,44 @@ public class VersionedMappingsImplementation implements VersionedMappings {
 			return arrayType;
 		}
 
-		public @NotNull List<@NotNull FieldHandle> getFields() {
+		@Override
+		public List<FieldHandle> getFields() {
 			return fields;
+		}
+
+		@Override
+		public List<MethodHandle> getMethods() {
+			return methods;
 		}
 
 		@Override
 		public @NotNull Class<?> getMappedClass() throws ClassNotFoundException {
 			if (cachedClass == null)
-				cachedClass = Class.forName(remapped);
+				cachedClass = Class.forName(obfuscated);
 			return cachedClass;
 		}
 
 		@Override
-		public @NotNull FieldHandle getField(@NotNull String key) throws NoSuchFieldException {
+		public @NotNull FieldHandle getField(@NotNull String original) throws NoSuchFieldException {
 			for (FieldHandle field : fields)
-				if (field.key.equals(key))
+				if (field.original.equals(original))
 					return field;
-			throw new NoSuchFieldException(key);
+			throw new NoSuchFieldException(original);
 		}
 
 		@Override
-		public @NotNull MethodHandle getMethod(@NotNull String key, @NotNull Type... parameterTypes)
+		public @NotNull MethodHandle getMethod(@NotNull String original, @NotNull Type... parameterTypes)
 				throws NoSuchMethodException {
 			for (MethodHandle method : methods)
-				if (method.key.equals(key) && Arrays.equals(method.parameterTypes, parameterTypes))
+				if (method.original.equals(original) && Arrays.equals(method.parameterTypes, parameterTypes))
 					return method;
-			throw new NoSuchMethodException(key);
+			throw new NoSuchMethodException(original);
 		}
 
 		@Override
-		public @NotNull Method getMappedMethod(@NotNull String key, @NotNull Type... parameterTypes)
+		public @NotNull Method getMappedMethod(@NotNull String original, @NotNull Type... parameterTypes)
 				throws NoSuchMethodException, SecurityException, ClassNotFoundException {
-			return getMethod(key, parameterTypes).getMappedMethod();
+			return getMethod(original, parameterTypes).getMappedMethod();
 		}
 
 		@Override
@@ -123,7 +141,7 @@ public class VersionedMappingsImplementation implements VersionedMappings {
 		@Override
 		public boolean equals(Object obj) {
 			if (obj instanceof ClassHandle o)
-				return o.key.equals(key);
+				return o.original.equals(original);
 			return false;
 		}
 
@@ -142,19 +160,29 @@ public class VersionedMappingsImplementation implements VersionedMappings {
 
 		public class FieldHandle implements MappedField {
 
-			public final @NotNull String key, remapped;
+			public final @NotNull String original, obfuscated;
 
 			private @Nullable Field cachedField;
 
-			public FieldHandle(@NotNull String key, @NotNull String remapped) {
-				this.key = key;
-				this.remapped = remapped;
+			public FieldHandle(@NotNull String original, @NotNull String obfuscated) {
+				this.original = original;
+				this.obfuscated = obfuscated;
+			}
+
+			@Override
+			public @NotNull String getOriginalName() {
+				return original;
+			}
+
+			@Override
+			public @NotNull String getObfuscatedName() {
+				return obfuscated;
 			}
 
 			@Override
 			public @NotNull Field getMappedField() throws NoSuchFieldException, SecurityException, ClassNotFoundException {
 				if (cachedField == null) {
-					cachedField = getMappedClass().getDeclaredField(remapped);
+					cachedField = getMappedClass().getDeclaredField(obfuscated);
 					cachedField.setAccessible(true);
 				}
 				return cachedField;
@@ -177,23 +205,38 @@ public class VersionedMappingsImplementation implements VersionedMappings {
 
 		public class MethodHandle implements MappedMethod {
 
-			public final @NotNull String key, remapped;
+			public final @NotNull String original, obfuscated;
 			public final @NotNull Type @NotNull [] parameterTypes;
 
 			private @Nullable Method cachedMethod;
 
-			public MethodHandle(@NotNull String key, @NotNull String remapped,
+			public MethodHandle(@NotNull String original, @NotNull String obfuscated,
 					@NotNull Type @NotNull [] parameterTypes) {
-				this.key = key;
-				this.remapped = remapped;
+				this.original = original;
+				this.obfuscated = obfuscated;
 				this.parameterTypes = parameterTypes;
+			}
+
+			@Override
+			public @NotNull String getOriginalName() {
+				return original;
+			}
+
+			@Override
+			public @NotNull String getObfuscatedName() {
+				return obfuscated;
+			}
+
+			@Override
+			public @NotNull Type @NotNull [] getParameterTypes() {
+				return null;
 			}
 
 			@Override
 			public @NotNull Method getMappedMethod()
 					throws NoSuchMethodException, SecurityException, ClassNotFoundException {
 				if (cachedMethod == null) {
-					cachedMethod = getMappedClass().getDeclaredMethod(remapped, getClassesFromHandles(parameterTypes));
+					cachedMethod = getMappedClass().getDeclaredMethod(obfuscated, getClassesFromHandles(parameterTypes));
 					cachedMethod.setAccessible(true);
 				}
 				return cachedMethod;

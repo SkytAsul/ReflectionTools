@@ -3,6 +3,7 @@ package fr.skytasul.reflection;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import java.lang.reflect.*;
+import java.util.Collection;
 
 public interface VersionedMappings {
 
@@ -55,7 +56,19 @@ public interface VersionedMappings {
 	@NotNull
 	MappedClass getClass(@NotNull String name) throws ClassNotFoundException;
 
-	interface MappedClass extends Type {
+	Collection<? extends MappedClass> getClasses();
+
+	interface MappedNamedObject {
+
+		@NotNull
+		String getOriginalName();
+
+		@NotNull
+		String getObfuscatedName();
+
+	}
+
+	interface MappedClass extends Type, MappedNamedObject {
 
 		@NotNull
 		Type getArrayType();
@@ -64,23 +77,27 @@ public interface VersionedMappings {
 		Class<?> getMappedClass() throws ClassNotFoundException;
 
 		@NotNull
-		MappedField getField(@NotNull String key) throws NoSuchFieldException;
+		MappedField getField(@NotNull String original) throws NoSuchFieldException;
 
 		@NotNull
-		default Field getMappedField(@NotNull String key)
+		default Field getMappedField(@NotNull String original)
 				throws NoSuchFieldException, SecurityException, ClassNotFoundException {
-			return getField(key).getMappedField();
+			return getField(original).getMappedField();
 		}
 
+		Collection<? extends MappedField> getFields();
+
 		@NotNull
-		MappedMethod getMethod(@NotNull String key, @NotNull Type... parameterTypes)
+		MappedMethod getMethod(@NotNull String original, @NotNull Type... parameterTypes)
 				throws NoSuchMethodException, ClassNotFoundException;
 
 		@NotNull
-		default Method getMappedMethod(@NotNull String key, @NotNull Type... parameterTypes)
+		default Method getMappedMethod(@NotNull String original, @NotNull Type... parameterTypes)
 				throws NoSuchMethodException, ClassNotFoundException {
-			return getMethod(key).getMappedMethod();
+			return getMethod(original).getMappedMethod();
 		}
+
+		Collection<? extends MappedMethod> getMethods();
 
 		@NotNull
 		MappedConstructor getConstructor(@NotNull Type... parameterTypes)
@@ -92,7 +109,7 @@ public interface VersionedMappings {
 			return getConstructor(parameterTypes).getMappedConstructor();
 		}
 
-		interface MappedField {
+		interface MappedField extends MappedNamedObject {
 
 			Field getMappedField() throws NoSuchFieldException, SecurityException, ClassNotFoundException;
 
@@ -104,7 +121,10 @@ public interface VersionedMappings {
 
 		}
 
-		interface MappedMethod {
+		interface MappedMethod extends MappedNamedObject {
+
+			@NotNull
+			Type @NotNull [] getParameterTypes();
 
 			Method getMappedMethod() throws NoSuchMethodException, SecurityException, ClassNotFoundException;
 

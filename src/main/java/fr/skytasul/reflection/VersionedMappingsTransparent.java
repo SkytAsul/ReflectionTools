@@ -6,17 +6,10 @@ import fr.skytasul.reflection.VersionedMappings.MappedClass.MappedMethod;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import java.lang.reflect.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
- * "Mappings" whoose keys are directly remapped to real Java names, without obfuscation.
- * <p>
- * Wrapped reflection methods such as {@link MappedField#get(Object)} will return <code>null</code>
- * if the underlying fields do not exist (useful for generating mappings on different software
- * versions just by following code path).
+ * "Mappings" whoose originals are directly remapped to real Java names, without obfuscation.
  */
 public class VersionedMappingsTransparent implements VersionedMappings {
 
@@ -57,15 +50,30 @@ public class VersionedMappingsTransparent implements VersionedMappings {
 		return clazz;
 	}
 
+	@Override
+	public Collection<? extends MappedClass> getClasses() {
+		return classes.values();
+	}
+
 	private class MappedClassTransparent implements MappedClass {
 
 		private final @NotNull Class<?> clazz;
 
-		private final List<Field> fields = new ArrayList<>();
-		private final List<Method> methods = new ArrayList<>();
+		private final List<TransparentField> fields = new ArrayList<>();
+		private final List<TransparentMethod> methods = new ArrayList<>();
 
 		protected MappedClassTransparent(@NotNull Class<?> clazz) {
 			this.clazz = clazz;
+		}
+
+		@Override
+		public @NotNull String getOriginalName() {
+			return clazz.getName();
+		}
+
+		@Override
+		public @NotNull String getObfuscatedName() {
+			return clazz.getName();
 		}
 
 		@Override
@@ -79,18 +87,37 @@ public class VersionedMappingsTransparent implements VersionedMappings {
 		}
 
 		@Override
-		public @NotNull MappedField getField(@NotNull String key) throws NoSuchFieldException {
-			var field = clazz.getDeclaredField(key);
-			fields.add(field);
-			return new TransparentField(field);
+		public Collection<? extends MappedField> getFields() {
+			return fields;
 		}
 
 		@Override
-		public @NotNull MappedMethod getMethod(@NotNull String key, @NotNull Type... parameterTypes)
+		public Collection<? extends MappedMethod> getMethods() {
+			return methods;
+		}
+
+		@Override
+		public @NotNull MappedField getField(@NotNull String original) throws NoSuchFieldException {
+			for (var field : fields)
+				if (field.getOriginalName().equals(original))
+					return field;
+
+			var field = new TransparentField(clazz.getDeclaredField(original));
+			fields.add(field);
+			return field;
+		}
+
+		@Override
+		public @NotNull MappedMethod getMethod(@NotNull String original, @NotNull Type... parameterTypes)
 				throws NoSuchMethodException, ClassNotFoundException {
-			var method = clazz.getDeclaredMethod(key, VersionedMappingsImplementation.getClassesFromHandles(parameterTypes));
+			for (var method : methods)
+				if (method.getOriginalName().equals(original) && Arrays.equals(method.getParameterTypes(), parameterTypes))
+					return method;
+
+			var method = new TransparentMethod(clazz.getDeclaredMethod(original,
+					VersionedMappingsImplementation.getClassesFromHandles(parameterTypes)));
 			methods.add(method);
-			return new TransparentMethod(method);
+			return method;
 		}
 
 		@Override
@@ -109,6 +136,16 @@ public class VersionedMappingsTransparent implements VersionedMappings {
 
 		public TransparentField(@NotNull Field field) {
 			this.field = field;
+		}
+
+		@Override
+		public @NotNull String getOriginalName() {
+			return field.getName();
+		}
+
+		@Override
+		public @NotNull String getObfuscatedName() {
+			return field.getName();
 		}
 
 		@Override
@@ -136,6 +173,21 @@ public class VersionedMappingsTransparent implements VersionedMappings {
 
 		public TransparentMethod(@NotNull Method method) {
 			this.method = method;
+		}
+
+		@Override
+		public @NotNull String getOriginalName() {
+			return method.getName();
+		}
+
+		@Override
+		public @NotNull String getObfuscatedName() {
+			return method.getName();
+		}
+
+		@Override
+		public @NotNull Type @NotNull [] getParameterTypes() {
+			return method.getParameterTypes();
 		}
 
 		@Override
