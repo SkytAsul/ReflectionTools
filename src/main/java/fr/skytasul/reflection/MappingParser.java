@@ -2,10 +2,7 @@ package fr.skytasul.reflection;
 
 import fr.skytasul.reflection.VersionedMappingsImplementation.ClassHandle;
 import org.jetbrains.annotations.NotNull;
-import java.io.IOException;
 import java.lang.reflect.Type;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -154,12 +151,6 @@ public class MappingParser {
 	}
 
 	private record ObfuscatedField(String original, String obfuscated) {
-	}
-
-	public static void main(String[] args) throws IOException {
-		LOGGER.setLevel(Level.ALL);
-		var mappings = new VersionedMappingsImplementation(1, 21, 0);
-		new MappingParser(mappings).parseAndFill(Files.readAllLines(Path.of("/data/Documents/Minecraft/server_1.21.txt")));
 	}
 
 }

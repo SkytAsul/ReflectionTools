@@ -1,9 +1,6 @@
 package fr.skytasul.reflection.shrieker;
 
-import fr.skytasul.reflection.MappingFileReader;
-import fr.skytasul.reflection.MappingFileWriter;
-import fr.skytasul.reflection.VersionedMappings;
-import fr.skytasul.reflection.VersionedMappingsImplementation;
+import fr.skytasul.reflection.*;
 import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -31,26 +28,24 @@ public class MappingsShrieker {
 	/**
 	 * Register the mappings used for a specific version.
 	 *
-	 * @param major
-	 * @param minor
-	 * @param patch
+	 * @param version the version of the mappings
 	 * @param mappingsPath path to the mappings file of this version
 	 * @throws IOException if an error happened while loading the mappings file
 	 */
-	public void registerVersionMappings(int major, int minor, int patch, @NotNull Path mappingsPath)
+	public void registerVersionMappings(@NotNull Version version, @NotNull Path mappingsPath)
 			throws IOException {
 		// First step: fill in the fake mappings with the classes/fields/methods actually needed
-		var fakeMappings = new FakeVersionedMappings(major, minor, patch);
+		var fakeMappings = new FakeVersionedMappings(version);
 		initializeFunction.accept(fakeMappings);
 
 		// Second step: load the real version mappings to get the obfuscated names
-		var reader = new MappingFileReader(mappingsPath, major, minor, patch);
+		var reader = new MappingFileReader(mappingsPath, version);
 		reader.parseMappings();
-		var fullMappings = (VersionedMappingsImplementation) reader.getAvailableVersions().get(0);
+		var fullMappings = (VersionedMappingsImplementation) reader.getParsedMappings(version);
 
 		// Third step: construct reduced mappings by merging the fake one with the obfuscated names from the
 		// real one.
-		var reducedMappings = new VersionedMappingsImplementation(major, minor, patch);
+		var reducedMappings = new VersionedMappingsImplementation(version);
 		try {
 			for (var fakeClass : fakeMappings.classes.values()) {
 				var mappedClass = new VersionedMappingsImplementation.ClassHandle(fakeClass.getOriginalName(),

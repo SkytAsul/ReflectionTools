@@ -7,51 +7,8 @@ import java.util.Collection;
 
 public interface VersionedMappings {
 
-	int getMajor();
-
-	int getMinor();
-
-	int getPatch();
-
-	default boolean isVersion(int major, int minor, int patch) {
-		return getMajor() == major && getMinor() == minor && getPatch() == patch;
-	}
-
-	/**
-	 * Checks if the version represented by those mappings is after or equal to the version passed as
-	 * parameters.
-	 *
-	 * @param major
-	 * @param minor
-	 * @param patch
-	 * @return <code>true</code> if the current version is after (inclusive) the passed version
-	 */
-	default boolean isAfter(int major, int minor, int patch) {
-		if (getMajor() > major)
-			return true;
-		if (getMajor() < major)
-			return false;
-
-		if (getMinor() > minor)
-			return true;
-		if (getMinor() < minor)
-			return false;
-
-		return getPatch() >= patch;
-	}
-
-	/**
-	 * Checks if the version represented by those mappings is strictly before the version passed as
-	 * parameters.
-	 *
-	 * @param major
-	 * @param minor
-	 * @param patch
-	 * @return <code>true</code> if the current version is before (exclusive) the passed version
-	 */
-	default boolean isBefore(int major, int minor, int patch) {
-		return !isAfter(major, minor, patch);
-	}
+	@NotNull
+	Version getVersion();
 
 	@NotNull
 	MappedClass getClass(@NotNull String name) throws ClassNotFoundException;
@@ -143,6 +100,10 @@ public interface VersionedMappings {
 
 		}
 
+	}
+
+	static @NotNull VersionedMappings getTransparentMappings() {
+		return new VersionedMappingsTransparent(Version.ZERO);
 	}
 
 }

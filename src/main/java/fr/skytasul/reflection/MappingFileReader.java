@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -37,25 +38,16 @@ public class MappingFileReader {
 	 * Creates a reader for a plain mappings file, associated with its version.
 	 *
 	 * @param path path to the mappings file
-	 * @param major
-	 * @param minor
-	 * @param patch
+	 * @param version version of the mappings
 	 * @throws IOException
 	 */
-	public MappingFileReader(@NotNull Path path, int major, int minor, int patch) throws IOException {
+	public MappingFileReader(@NotNull Path path, @NotNull Version version) throws IOException {
 		this(path);
 
-		mappings = List.of(new VersionPart(new VersionedMappingsImplementation(major, minor, patch), -1, -1));
+		mappings = List.of(new VersionPart(new VersionedMappingsImplementation(version), -1, -1));
 	}
 
-	public @NotNull List<VersionedMappings> getAvailableVersions() {
-		if (mappings == null)
-			throw new IllegalStateException("No versions are available for now");
-
-		return mappings.stream().map(x -> (VersionedMappings) x.mappings).toList();
-	}
-
-	public void readAvailableVersions() {
+	public @NotNull List<Version> readAvailableVersions() {
 		if (mappings != null)
 			throw new IllegalStateException("Versions are already known");
 
@@ -65,13 +57,13 @@ public class MappingFileReader {
 				if (mappings == null)
 					mappings = new ArrayList<>();
 				else
-					return;
+					return mappings.stream().map(x -> x.mappings.getVersion()).toList();
 			} else if (mappings != null && (versionMatcher = VERSION_PATTERN.matcher(line)).matches()) {
 				mappings.add(new VersionPart(
-						new VersionedMappingsImplementation(
+						new VersionedMappingsImplementation(new Version(
 								Integer.parseInt(versionMatcher.group("major")),
 								Integer.parseInt(versionMatcher.group("minor")),
-								Integer.parseInt(versionMatcher.group("patch"))),
+								Integer.parseInt(versionMatcher.group("patch")))),
 						Integer.parseInt(versionMatcher.group("firstline")),
 						Integer.parseInt(versionMatcher.group("lastline"))));
 			}
@@ -79,16 +71,34 @@ public class MappingFileReader {
 
 		if (mappings == null)
 			throw new IllegalArgumentException("File does not contain version information");
-		if (mappings != null)
-			throw new IllegalArgumentException("Invalid syntax: no end to the version informations");
+
+		// if we are here, we didn't return at the end of the version informations block: error
+		throw new IllegalArgumentException("Invalid syntax: no end to the version informations");
 	}
 
-	public void keepOnlyVersion(int major, int minor, int patch) {
+	public @NotNull List<Version> getAvailableVersions() {
+		if (mappings == null)
+			throw new IllegalStateException("No versions are available for now");
+
+		return mappings.stream().map(x -> x.mappings.getVersion()).sorted().toList();
+	}
+
+	public boolean keepOnlyVersion(@NotNull Version version) {
+		boolean found = false;
 		for (var iterator = mappings.iterator(); iterator.hasNext();) {
-			var version = iterator.next();
-			if (!version.mappings.isVersion(major, minor, patch))
+			if (version.equals(iterator.next().mappings.getVersion()))
+				found = true;
+			else
 				iterator.remove();
 		}
+		return found;
+	}
+
+	public @NotNull Optional<Version> keepBestMatchedVersion(@NotNull Version targetVersion) {
+		var foundVersion = getBestMatchedVersion(targetVersion, getAvailableVersions());
+		if (foundVersion.isPresent())
+			keepOnlyVersion(foundVersion.get());
+		return foundVersion;
 	}
 
 	public void parseMappings() {
@@ -105,7 +115,27 @@ public class MappingFileReader {
 		}
 	}
 
+	public @NotNull VersionedMappings getParsedMappings(@NotNull Version version) {
+		return mappings.stream().filter(x -> x.mappings.getVersion().equals(version)).findAny().orElseThrow().mappings;
+	}
+
 	private record VersionPart(VersionedMappingsImplementation mappings, int firstLine, int lastLine) {
+	}
+
+	public static @NotNull Optional<Version> getBestMatchedVersion(@NotNull Version targetVersion,
+			@NotNull List<@NotNull Version> availableVersions) {
+		Version lastVersion = null;
+		for (var version : availableVersions) {
+			if (version.is(targetVersion))
+				return Optional.of(version);
+
+			if (version.isBefore(targetVersion))
+				lastVersion = version;
+
+			if (version.isAfter(targetVersion))
+				break;
+		}
+		return Optional.ofNullable(lastVersion);
 	}
 
 }

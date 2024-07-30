@@ -13,31 +13,16 @@ import java.util.*;
  */
 public class VersionedMappingsTransparent implements VersionedMappings {
 
-	private final int major;
-	private final int minor;
-	private final int patch;
-
+	private final @NotNull Version version;
 	private final Map<String, MappedClassTransparent> classes = new HashMap<>();
 
-	public VersionedMappingsTransparent(int major, int minor, int patch) {
-		this.major = major;
-		this.minor = minor;
-		this.patch = patch;
+	public VersionedMappingsTransparent(@NotNull Version version) {
+		this.version = version;
 	}
 
 	@Override
-	public int getMajor() {
-		return major;
-	}
-
-	@Override
-	public int getMinor() {
-		return minor;
-	}
-
-	@Override
-	public int getPatch() {
-		return patch;
+	public @NotNull Version getVersion() {
+		return version;
 	}
 
 	@Override

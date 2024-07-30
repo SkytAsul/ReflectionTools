@@ -39,8 +39,7 @@ public class MappingFileWriter {
 		for (var mapping : mappings) {
 			int mappingLength =
 					mapping.getClasses().stream().mapToInt(c -> c.getFields().size() + c.getMethods().size() + 1).sum();
-			writer.append("# reflection-remapper | %d.%d.%d %d-%d".formatted(mapping.getMajor(), mapping.getMinor(),
-					mapping.getPatch(), lastLine + 1, lastLine + mappingLength));
+			writer.append("# reflection-remapper | %s %d-%d".formatted(mapping, lastLine + 1, lastLine + mappingLength));
 			writer.newLine();
 			lastLine += mappingLength;
 		}

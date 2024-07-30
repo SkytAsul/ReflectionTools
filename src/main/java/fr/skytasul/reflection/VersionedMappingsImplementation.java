@@ -12,31 +12,16 @@ import java.util.List;
 
 public class VersionedMappingsImplementation implements VersionedMappings {
 
-	public final int major;
-	public final int minor;
-	public final int patch;
-
+	private final @NotNull Version version;
 	public List<ClassHandle> classes;
 
-	public VersionedMappingsImplementation(int major, int minor, int patch) {
-		this.major = major;
-		this.minor = minor;
-		this.patch = patch;
+	public VersionedMappingsImplementation(@NotNull Version version) {
+		this.version = version;
 	}
 
 	@Override
-	public int getMajor() {
-		return major;
-	}
-
-	@Override
-	public int getMinor() {
-		return minor;
-	}
-
-	@Override
-	public int getPatch() {
-		return patch;
+	public @NotNull Version getVersion() {
+		return version;
 	}
 
 	@Override

@@ -10,7 +10,7 @@ class MappingReaderTest {
 
 	@Test
 	void testParseNativeParameters() {
-		var mappings = new VersionedMappingsImplementation(0, 0, 0);
+		var mappings = new VersionedMappingsImplementation(Version.ZERO);
 		mappings.classes = Collections.emptyList();
 		var reader = new MappingParser(mappings);
 
@@ -20,7 +20,7 @@ class MappingReaderTest {
 
 	@Test
 	void testParseJavaParameters() {
-		var mappings = new VersionedMappingsImplementation(0, 0, 0);
+		var mappings = new VersionedMappingsImplementation(Version.ZERO);
 		mappings.classes = Collections.emptyList();
 		var reader = new MappingParser(mappings);
 
@@ -31,7 +31,7 @@ class MappingReaderTest {
 
 	@Test
 	void testParseJavaArrayParameters() {
-		var mappings = new VersionedMappingsImplementation(0, 0, 0);
+		var mappings = new VersionedMappingsImplementation(Version.ZERO);
 		mappings.classes = Collections.emptyList();
 		var reader = new MappingParser(mappings);
 
@@ -41,8 +41,8 @@ class MappingReaderTest {
 
 	@Test
 	void testParseCustomParameters() {
-		var mappings = new VersionedMappingsImplementation(0, 0, 0);
-		var dummyClassHandle = mappings.new ClassHandle("net.minecraft.ChatFormatting", "abc");
+		var mappings = new VersionedMappingsImplementation(Version.ZERO);
+		var dummyClassHandle = new VersionedMappingsImplementation.ClassHandle("net.minecraft.ChatFormatting", "abc");
 		mappings.classes = Arrays.asList(dummyClassHandle);
 		var reader = new MappingParser(mappings);
 
@@ -52,8 +52,8 @@ class MappingReaderTest {
 
 	@Test
 	void testParseCustomArrayParameters() {
-		var mappings = new VersionedMappingsImplementation(0, 0, 0);
-		var dummyClassHandle = mappings.new ClassHandle("net.minecraft.ChatFormatting", "abc");
+		var mappings = new VersionedMappingsImplementation(Version.ZERO);
+		var dummyClassHandle = new VersionedMappingsImplementation.ClassHandle("net.minecraft.ChatFormatting", "abc");
 		mappings.classes = Arrays.asList(dummyClassHandle);
 		var reader = new MappingParser(mappings);
 

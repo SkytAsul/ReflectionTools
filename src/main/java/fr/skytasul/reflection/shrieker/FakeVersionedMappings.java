@@ -1,5 +1,6 @@
 package fr.skytasul.reflection.shrieker;
 
+import fr.skytasul.reflection.Version;
 import fr.skytasul.reflection.VersionedMappings;
 import fr.skytasul.reflection.VersionedMappings.MappedClass.MappedField;
 import org.jetbrains.annotations.NotNull;
@@ -14,31 +15,16 @@ import java.util.*;
  */
 public class FakeVersionedMappings implements VersionedMappings {
 
-	private final int major;
-	private final int minor;
-	private final int patch;
-
+	private final @NotNull Version version;
 	public final Map<String, FakeMappedClass> classes = new HashMap<>();
 
-	public FakeVersionedMappings(int major, int minor, int patch) {
-		this.major = major;
-		this.minor = minor;
-		this.patch = patch;
+	public FakeVersionedMappings(@NotNull Version version) {
+		this.version = version;
 	}
 
 	@Override
-	public int getMajor() {
-		return major;
-	}
-
-	@Override
-	public int getMinor() {
-		return minor;
-	}
-
-	@Override
-	public int getPatch() {
-		return patch;
+	public @NotNull Version getVersion() {
+		return version;
 	}
 
 	@Override
