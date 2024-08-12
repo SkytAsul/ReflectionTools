@@ -91,7 +91,13 @@ public record Version(int major, int minor, int patch) implements Comparable<Ver
 	}
 
 	@Override
-	public final String toString() {
+	public final @NotNull String toString() {
+		return toString(false);
+	}
+
+	public final @NotNull String toString(boolean omitPatch) {
+		if (omitPatch && patch == 0)
+			return "%d.%d".formatted(major, minor);
 		return "%d.%d.%d".formatted(major, minor, patch);
 	}
 

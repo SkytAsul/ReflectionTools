@@ -100,7 +100,7 @@ public class VersionedMappingsTransparent implements VersionedMappings {
 					return method;
 
 			var method = new TransparentMethod(clazz.getDeclaredMethod(original,
-					VersionedMappingsImplementation.getClassesFromHandles(parameterTypes)));
+					VersionedMappingsObfuscated.getClassesFromHandles(parameterTypes)));
 			methods.add(method);
 			return method;
 		}
@@ -109,7 +109,7 @@ public class VersionedMappingsTransparent implements VersionedMappings {
 		public @NotNull MappedConstructor getConstructor(@NotNull Type... parameterTypes)
 				throws NoSuchMethodException, SecurityException, ClassNotFoundException {
 			var constructor =
-					clazz.getDeclaredConstructor(VersionedMappingsImplementation.getClassesFromHandles(parameterTypes));
+					clazz.getDeclaredConstructor(VersionedMappingsObfuscated.getClassesFromHandles(parameterTypes));
 			return new TransparentConstructor(constructor);
 		}
 
@@ -121,6 +121,7 @@ public class VersionedMappingsTransparent implements VersionedMappings {
 
 		public TransparentField(@NotNull Field field) {
 			this.field = field;
+			field.setAccessible(true);
 		}
 
 		@Override
@@ -140,13 +141,11 @@ public class VersionedMappingsTransparent implements VersionedMappings {
 
 		@Override
 		public Object get(@Nullable Object instance) throws IllegalArgumentException, IllegalAccessException {
-			field.setAccessible(true);
 			return field.get(instance);
 		}
 
 		@Override
 		public void set(@Nullable Object instance, Object value) throws IllegalArgumentException, IllegalAccessException {
-			field.setAccessible(true);
 			field.set(instance, value);
 		}
 
@@ -158,6 +157,7 @@ public class VersionedMappingsTransparent implements VersionedMappings {
 
 		public TransparentMethod(@NotNull Method method) {
 			this.method = method;
+			method.setAccessible(true);
 		}
 
 		@Override
@@ -183,7 +183,6 @@ public class VersionedMappingsTransparent implements VersionedMappings {
 		@Override
 		public Object invoke(@Nullable Object instance, @Nullable Object... args)
 				throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
-			method.setAccessible(true);
 			return method.invoke(instance, args);
 		}
 
@@ -195,6 +194,7 @@ public class VersionedMappingsTransparent implements VersionedMappings {
 
 		public TransparentConstructor(@NotNull Constructor<?> constructor) {
 			this.constructor = constructor;
+			constructor.setAccessible(true);
 		}
 
 		@Override

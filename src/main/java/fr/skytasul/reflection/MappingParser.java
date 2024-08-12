@@ -1,6 +1,6 @@
 package fr.skytasul.reflection;
 
-import fr.skytasul.reflection.VersionedMappingsImplementation.ClassHandle;
+import fr.skytasul.reflection.VersionedMappingsObfuscated.ClassHandle;
 import org.jetbrains.annotations.NotNull;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -46,9 +46,9 @@ public class MappingParser {
 
 	private Map<String, ClassHandle> fakeHandles = new HashMap<>();
 
-	private @NotNull VersionedMappingsImplementation mappings;
+	private @NotNull VersionedMappingsObfuscated mappings;
 
-	public MappingParser(@NotNull VersionedMappingsImplementation mappings) {
+	public MappingParser(@NotNull VersionedMappingsObfuscated mappings) {
 		this.mappings = mappings;
 	}
 
@@ -81,6 +81,9 @@ public class MappingParser {
 			} else
 				LOGGER.log(Level.WARNING, "Failed to parse line {0}", line);
 		}
+		// we close the last class
+		if (classOriginal != null)
+			classes.add(new ObfuscatedClass(classOriginal, classObfuscated, classMethods, classFields));
 
 		LOGGER.log(Level.FINE, "Found {0} classes to remap", classes.size());
 

@@ -17,10 +17,19 @@ public class MappingFileReader {
 	private static final Pattern VERSION_PATTERN = Pattern.compile(
 			"# reflection-remapper \\| (?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+) (?<firstline>\\d+)-(?<lastline>\\d+)");
 
-	private final @NotNull Path path;
 	private final @NotNull List<String> lines;
 
 	private @Nullable List<VersionPart> mappings;
+
+	/**
+	 * Creates a reader for a composite mappings file.
+	 *
+	 * @param lines of the mappings file
+	 * @throws IOException
+	 */
+	public MappingFileReader(@NotNull List<String> lines) throws IOException {
+		this.lines = lines;
+	}
 
 	/**
 	 * Creates a reader for a composite mappings file.
@@ -29,9 +38,20 @@ public class MappingFileReader {
 	 * @throws IOException
 	 */
 	public MappingFileReader(@NotNull Path path) throws IOException {
-		this.path = path;
+		this(Files.readAllLines(path));
+	}
 
-		lines = Files.readAllLines(path);
+	/**
+	 * Creates a reader for a plain mappings file, associated with its version.
+	 *
+	 * @param lines of the mappings file
+	 * @param version version of the mappings
+	 * @throws IOException
+	 */
+	public MappingFileReader(@NotNull List<String> lines, @NotNull Version version) throws IOException {
+		this(lines);
+
+		mappings = List.of(new VersionPart(new VersionedMappingsObfuscated(version), -1, -1));
 	}
 
 	/**
@@ -42,9 +62,7 @@ public class MappingFileReader {
 	 * @throws IOException
 	 */
 	public MappingFileReader(@NotNull Path path, @NotNull Version version) throws IOException {
-		this(path);
-
-		mappings = List.of(new VersionPart(new VersionedMappingsImplementation(version), -1, -1));
+		this(Files.readAllLines(path), version);
 	}
 
 	public @NotNull List<Version> readAvailableVersions() {
@@ -57,10 +75,10 @@ public class MappingFileReader {
 				if (mappings == null)
 					mappings = new ArrayList<>();
 				else
-					return mappings.stream().map(x -> x.mappings.getVersion()).toList();
+					return getAvailableVersions();
 			} else if (mappings != null && (versionMatcher = VERSION_PATTERN.matcher(line)).matches()) {
 				mappings.add(new VersionPart(
-						new VersionedMappingsImplementation(new Version(
+						new VersionedMappingsObfuscated(new Version(
 								Integer.parseInt(versionMatcher.group("major")),
 								Integer.parseInt(versionMatcher.group("minor")),
 								Integer.parseInt(versionMatcher.group("patch")))),
@@ -84,14 +102,13 @@ public class MappingFileReader {
 	}
 
 	public boolean keepOnlyVersion(@NotNull Version version) {
-		boolean found = false;
-		for (var iterator = mappings.iterator(); iterator.hasNext();) {
-			if (version.equals(iterator.next().mappings.getVersion()))
-				found = true;
-			else
-				iterator.remove();
+		for (var mapping : mappings) {
+			if (version.equals(mapping.mappings.getVersion())) {
+				mappings = List.of(mapping);
+				return true;
+			}
 		}
-		return found;
+		return false;
 	}
 
 	public @NotNull Optional<Version> keepBestMatchedVersion(@NotNull Version targetVersion) {
@@ -119,9 +136,24 @@ public class MappingFileReader {
 		return mappings.stream().filter(x -> x.mappings.getVersion().equals(version)).findAny().orElseThrow().mappings;
 	}
 
-	private record VersionPart(VersionedMappingsImplementation mappings, int firstLine, int lastLine) {
+	private record VersionPart(VersionedMappingsObfuscated mappings, int firstLine, int lastLine) {
 	}
 
+	/**
+	 * Returns the version present in the available versions list that matches the best the target
+	 * version.
+	 * <p>
+	 * If there is a perfect match (i.e. the target version is present in the list) then the target
+	 * version is returned.
+	 * <p>
+	 * If there is no perfect match but a version lower than the target is present, it will be returned.
+	 * <p>
+	 * If only greater versions are available, then an empty Optional is returned.
+	 *
+	 * @param targetVersion target version
+	 * @param availableVersions available versions (<strong>must be sorted !</strong>)
+	 * @return an optional containing a matching version if present, otherwise an empty optional
+	 */
 	public static @NotNull Optional<Version> getBestMatchedVersion(@NotNull Version targetVersion,
 			@NotNull List<@NotNull Version> availableVersions) {
 		Version lastVersion = null;

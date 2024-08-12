@@ -6,11 +6,14 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 
+/**
+ * <b>Warning:</b> make sure all necessary classes (outside the reflected ones) are present in the
+ * classpath, otherwise it would not work!
+ */
 public class MappingsShrieker {
 
-	private final @NotNull Consumer<@NotNull VersionedMappings> initializeFunction;
+	private final @NotNull ReflectionInitializer initializeFunction;
 	private final @NotNull List<@NotNull VersionedMappings> allReducedMappings = new ArrayList<>();
 
 	/**
@@ -18,10 +21,10 @@ public class MappingsShrieker {
 	 *
 	 * @param initializeFunction function that is called for each call to
 	 *        {@link #registerVersionMappings(int, int, int, Path)}. All reflection accesses made to the
-	 *        {@link VersionedMappings} passed as parameter to this Consumer will be recorded and used
+	 *        {@link VersionedMappings} passed as parameter to this function will be recorded and used
 	 *        to create the reduced mappings.
 	 */
-	public MappingsShrieker(@NotNull Consumer<@NotNull VersionedMappings> initializeFunction) {
+	public MappingsShrieker(@NotNull ReflectionInitializer initializeFunction) {
 		this.initializeFunction = initializeFunction;
 	}
 
@@ -31,24 +34,25 @@ public class MappingsShrieker {
 	 * @param version the version of the mappings
 	 * @param mappingsPath path to the mappings file of this version
 	 * @throws IOException if an error happened while loading the mappings file
+	 * @throws ReflectiveOperationException if an error happened while initializing the reflection
 	 */
 	public void registerVersionMappings(@NotNull Version version, @NotNull Path mappingsPath)
-			throws IOException {
+			throws IOException, ReflectiveOperationException {
 		// First step: fill in the fake mappings with the classes/fields/methods actually needed
 		var fakeMappings = new FakeVersionedMappings(version);
-		initializeFunction.accept(fakeMappings);
+		initializeFunction.initializeReflection(fakeMappings);
 
 		// Second step: load the real version mappings to get the obfuscated names
 		var reader = new MappingFileReader(mappingsPath, version);
 		reader.parseMappings();
-		var fullMappings = (VersionedMappingsImplementation) reader.getParsedMappings(version);
+		var fullMappings = (VersionedMappingsObfuscated) reader.getParsedMappings(version);
 
 		// Third step: construct reduced mappings by merging the fake one with the obfuscated names from the
 		// real one.
-		var reducedMappings = new VersionedMappingsImplementation(version);
+		var reducedMappings = new VersionedMappingsObfuscated(version);
 		try {
 			for (var fakeClass : fakeMappings.classes.values()) {
-				var mappedClass = new VersionedMappingsImplementation.ClassHandle(fakeClass.getOriginalName(),
+				var mappedClass = new VersionedMappingsObfuscated.ClassHandle(fakeClass.getOriginalName(),
 						fullMappings.getClass(fakeClass.getOriginalName()).getObfuscatedName());
 
 				mappedClass.fields = new ArrayList<>();
@@ -86,6 +90,13 @@ public class MappingsShrieker {
 	 */
 	public void writeMappingsFile(@NotNull Path mappingsPath) throws IOException {
 		new MappingFileWriter(mappingsPath, allReducedMappings).writeAll();
+	}
+
+	@FunctionalInterface
+	public static interface ReflectionInitializer {
+
+		void initializeReflection(@NotNull VersionedMappings mappings) throws ReflectiveOperationException;
+
 	}
 
 }

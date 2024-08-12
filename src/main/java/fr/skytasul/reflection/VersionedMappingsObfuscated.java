@@ -10,12 +10,12 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-public class VersionedMappingsImplementation implements VersionedMappings {
+public class VersionedMappingsObfuscated implements VersionedMappings {
 
 	private final @NotNull Version version;
 	public List<ClassHandle> classes;
 
-	public VersionedMappingsImplementation(@NotNull Version version) {
+	public VersionedMappingsObfuscated(@NotNull Version version) {
 		this.version = version;
 	}
 
@@ -214,7 +214,7 @@ public class VersionedMappingsImplementation implements VersionedMappings {
 
 			@Override
 			public @NotNull Type @NotNull [] getParameterTypes() {
-				return null;
+				return parameterTypes;
 			}
 
 			@Override
