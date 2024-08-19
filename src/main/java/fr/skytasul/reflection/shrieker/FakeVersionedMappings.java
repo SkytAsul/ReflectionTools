@@ -113,6 +113,13 @@ public class FakeVersionedMappings implements VersionedMappings {
 			};
 		}
 
+		@Override
+		public boolean equals(Object obj) {
+			if (obj instanceof Type o)
+				return o.getTypeName().equals(original);
+			return false;
+		}
+
 		record FakeMappedField(@NotNull String original) implements MappedField {
 
 			@Override

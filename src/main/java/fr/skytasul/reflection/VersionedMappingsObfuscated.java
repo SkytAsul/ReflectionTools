@@ -125,8 +125,8 @@ public class VersionedMappingsObfuscated implements VersionedMappings {
 
 		@Override
 		public boolean equals(Object obj) {
-			if (obj instanceof ClassHandle o)
-				return o.original.equals(original);
+			if (obj instanceof Type o)
+				return o.getTypeName().equals(original);
 			return false;
 		}
 

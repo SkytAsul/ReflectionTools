@@ -50,28 +50,25 @@ public class MappingsShrieker {
 		// Third step: construct reduced mappings by merging the fake one with the obfuscated names from the
 		// real one.
 		var reducedMappings = new VersionedMappingsObfuscated(version);
-		try {
-			for (var fakeClass : fakeMappings.classes.values()) {
-				var mappedClass = new VersionedMappingsObfuscated.ClassHandle(fakeClass.getOriginalName(),
-						fullMappings.getClass(fakeClass.getOriginalName()).getObfuscatedName());
+		for (var fakeClass : fakeMappings.classes.values()) {
+			var mappedClass = new VersionedMappingsObfuscated.ClassHandle(fakeClass.getOriginalName(),
+					fullMappings.getClass(fakeClass.getOriginalName()).getObfuscatedName());
 
-				mappedClass.fields = new ArrayList<>();
-				for (var fakeField : fakeClass.fields.values()) {
-					mappedClass.fields.add(mappedClass.new FieldHandle(fakeField.getOriginalName(),
-							mappedClass.getField(fakeField.getOriginalName()).getObfuscatedName()));
-				}
-
-				mappedClass.methods = new ArrayList<>();
-				for (var fakeMethod : fakeClass.methods) {
-					mappedClass.methods.add(mappedClass.new MethodHandle(fakeMethod.getOriginalName(),
-							mappedClass.getField(fakeMethod.getOriginalName()).getObfuscatedName(),
-							fakeMethod.getParameterTypes()));
-				}
-
-				reducedMappings.classes.add(mappedClass);
+			mappedClass.fields = new ArrayList<>();
+			for (var fakeField : fakeClass.fields.values()) {
+				mappedClass.fields.add(mappedClass.new FieldHandle(fakeField.getOriginalName(),
+						mappedClass.getField(fakeField.getOriginalName()).getObfuscatedName()));
 			}
-		} catch (ReflectiveOperationException ex) {
-			throw new Error("This exception cannot happen.", ex);
+
+			mappedClass.methods = new ArrayList<>();
+			for (var fakeMethod : fakeClass.methods) {
+				mappedClass.methods.add(mappedClass.new MethodHandle(fakeMethod.getOriginalName(),
+						mappedClass.getMethod(fakeMethod.getOriginalName(), fakeMethod.getParameterTypes())
+								.getObfuscatedName(),
+						fakeMethod.getParameterTypes()));
+			}
+
+			reducedMappings.classes.add(mappedClass);
 		}
 
 		// Finally, we can add the reduced mappings to the list of completed mappings.

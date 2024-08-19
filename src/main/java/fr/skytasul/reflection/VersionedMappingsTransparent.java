@@ -113,6 +113,13 @@ public class VersionedMappingsTransparent implements VersionedMappings {
 			return new TransparentConstructor(constructor);
 		}
 
+		@Override
+		public boolean equals(Object obj) {
+			if (obj instanceof Type o)
+				return o.getTypeName().equals(clazz.getName());
+			return false;
+		}
+
 	}
 
 	protected static class TransparentField implements MappedField {

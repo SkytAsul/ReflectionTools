@@ -36,20 +36,26 @@ public class MappingParser {
 
 	private static final Logger LOGGER = Logger.getLogger("MappingReader");
 
-	private static final Pattern CLASS_REGEX = Pattern.compile("(?<original>[\\w.$]+) -> (?<obfuscated>[\\w$]+):");
+	private static final Pattern CLASS_REGEX = Pattern.compile("(?<original>[\\w.$]+) -> (?<obfuscated>[\\w.$]+):");
 	private static final Pattern METHOD_REGEX = Pattern.compile(
-			"    (?:\\d+:\\d+:[\\w.$\\[\\]]+ )?(?<original>[\\w<>$]+)\\((?<parameters>[\\w.$, \\[\\]]*)\\) -> (?<obfuscated>[\\w<>]+)");
+			"    (?:(?:\\d+:\\d+:)?[\\w.$\\[\\]]+ )?(?<original>[\\w<>$]+)\\((?<parameters>[\\w.$, \\[\\]]*)\\) -> (?<obfuscated>[\\w<>]+)");
 	private static final Pattern FIELD_REGEX =
 			Pattern.compile("    (?:[\\w.$\\[\\]]+ )?(?<original>[\\w$]+) -> (?<obfuscated>\\w+)");
 
 	private static final Pattern METHOD_PARAMETERS_REGEX = Pattern.compile("([\\w.$]+)(\\[\\])?,?");
 
 	private Map<String, ClassHandle> fakeHandles = new HashMap<>();
+	private boolean failOnLineParse = false;
 
 	private @NotNull VersionedMappingsObfuscated mappings;
 
 	public MappingParser(@NotNull VersionedMappingsObfuscated mappings) {
 		this.mappings = mappings;
+	}
+
+	public @NotNull MappingParser setFailOnLineParse(boolean failOnLineParse) {
+		this.failOnLineParse = failOnLineParse;
+		return this;
 	}
 
 	public void parseAndFill(@NotNull List<String> lines) {
@@ -78,8 +84,12 @@ public class MappingParser {
 						methodMatch.group("parameters")));
 			} else if ((fieldMatch = FIELD_REGEX.matcher(line)).matches()) {
 				classFields.add(new ObfuscatedField(fieldMatch.group("original"), fieldMatch.group("obfuscated")));
-			} else
-				LOGGER.log(Level.WARNING, "Failed to parse line {0}", line);
+			} else {
+				if (failOnLineParse)
+					throw new IllegalArgumentException("Failed to parse line " + line);
+				else
+					LOGGER.log(Level.WARNING, "Failed to parse line {0}", line);
+			}
 		}
 		// we close the last class
 		if (classOriginal != null)

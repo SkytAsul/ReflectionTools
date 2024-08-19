@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -81,6 +83,18 @@ class MappingParserTest {
 		parsedClass = mappings.classes.get(1);
 		assertEquals(1, parsedClass.getMethods().size());
 		assertEquals(0, parsedClass.getFields().size());
+	}
+
+	@Test
+	void testParseMinecraftMappings() {
+		assertDoesNotThrow(() -> {
+			try (var inputReader =
+					new BufferedReader(new InputStreamReader(getClass().getResourceAsStream("/mc_server_1.21.txt")))) {
+				var lines = inputReader.lines().toList();
+				reader.setFailOnLineParse(true);
+				reader.parseAndFill(lines);
+			}
+		});
 	}
 
 	@Test
