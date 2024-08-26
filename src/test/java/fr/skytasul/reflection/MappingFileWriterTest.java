@@ -26,7 +26,7 @@ class MappingFileWriterTest {
 				# reflection-remapper | AVAILABLE VERSIONS
 				# reflection-remapper | 1.2.3 3-4
 				# reflection-remapper | AVAILABLE VERSIONS
-				java.lang.String -> a
+				java.lang.String -> a:
 				    split(java.lang.String) -> b
 				""", writer.toString());
 	}
@@ -56,9 +56,9 @@ class MappingFileWriterTest {
 				# reflection-remapper | 1.2.0 4-5
 				# reflection-remapper | 1.2.1 6-7
 				# reflection-remapper | AVAILABLE VERSIONS
-				java.lang.String -> a
+				java.lang.String -> a:
 				    split(java.lang.String) -> b
-				java.lang.String -> c
+				java.lang.String -> c:
 				    split(java.lang.String) -> d
 				""", writer.toString());
 	}

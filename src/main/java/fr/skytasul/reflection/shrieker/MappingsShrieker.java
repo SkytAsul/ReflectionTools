@@ -38,32 +38,43 @@ public class MappingsShrieker {
 	 */
 	public void registerVersionMappings(@NotNull Version version, @NotNull Path mappingsPath)
 			throws IOException, ReflectiveOperationException {
+		var reader = new MappingFileReader(mappingsPath, version);
+		reader.parseMappings();
+		registerVersionMappings(version, reader.getParsedMappings(version));
+	}
+
+	/**
+	 * Register the mappings used for a specific version.
+	 *
+	 * @param version the version of the mappings
+	 * @param mappings mappings of this version
+	 * @throws ReflectiveOperationException if an error happened while initializing the reflection
+	 */
+	public void registerVersionMappings(@NotNull Version version, @NotNull VersionedMappings mappings)
+			throws ReflectiveOperationException {
 		// First step: fill in the fake mappings with the classes/fields/methods actually needed
 		var fakeMappings = new FakeVersionedMappings(version);
 		initializeFunction.initializeReflection(fakeMappings);
 
-		// Second step: load the real version mappings to get the obfuscated names
-		var reader = new MappingFileReader(mappingsPath, version);
-		reader.parseMappings();
-		var fullMappings = (VersionedMappingsObfuscated) reader.getParsedMappings(version);
-
-		// Third step: construct reduced mappings by merging the fake one with the obfuscated names from the
-		// real one.
+		// Second step: construct reduced mappings by merging the fake one with the obfuscated names from
+		// the real one.
 		var reducedMappings = new VersionedMappingsObfuscated(version);
+		reducedMappings.classes = new ArrayList<>();
 		for (var fakeClass : fakeMappings.classes.values()) {
+			var fullClass = mappings.getClass(fakeClass.getOriginalName());
 			var mappedClass = new VersionedMappingsObfuscated.ClassHandle(fakeClass.getOriginalName(),
-					fullMappings.getClass(fakeClass.getOriginalName()).getObfuscatedName());
+					fullClass.getObfuscatedName());
 
 			mappedClass.fields = new ArrayList<>();
 			for (var fakeField : fakeClass.fields.values()) {
 				mappedClass.fields.add(mappedClass.new FieldHandle(fakeField.getOriginalName(),
-						mappedClass.getField(fakeField.getOriginalName()).getObfuscatedName()));
+						fullClass.getField(fakeField.getOriginalName()).getObfuscatedName()));
 			}
 
 			mappedClass.methods = new ArrayList<>();
 			for (var fakeMethod : fakeClass.methods) {
 				mappedClass.methods.add(mappedClass.new MethodHandle(fakeMethod.getOriginalName(),
-						mappedClass.getMethod(fakeMethod.getOriginalName(), fakeMethod.getParameterTypes())
+						fullClass.getMethod(fakeMethod.getOriginalName(), fakeMethod.getParameterTypes())
 								.getObfuscatedName(),
 						fakeMethod.getParameterTypes()));
 			}
@@ -80,7 +91,7 @@ public class MappingsShrieker {
 	}
 
 	/**
-	 * Write all construced reduced mappings to the path specified.
+	 * Write all constructed reduced mappings to the path specified.
 	 *
 	 * @param mappingsPath
 	 * @throws IOException if an error occurred while writing the mappings file

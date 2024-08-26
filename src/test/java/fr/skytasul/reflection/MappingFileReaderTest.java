@@ -1,5 +1,7 @@
 package fr.skytasul.reflection;
 
+import static fr.skytasul.reflection.TestUtils.getLines;
+import static fr.skytasul.reflection.TestUtils.getVersionArray;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -11,7 +13,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import java.util.List;
-import java.util.stream.Stream;
 
 class MappingFileReaderTest {
 
@@ -131,14 +132,6 @@ class MappingFileReaderTest {
 			assertNotNull(reader.getParsedMappings(new Version(1, 1, 0)));
 		});
 
-	}
-
-	static Version[] getVersionArray(String... versions) {
-		return Stream.of(versions).map(Version::parse).toArray(Version[]::new);
-	}
-
-	static List<String> getLines(String string) {
-		return List.of(string.split("\\n"));
 	}
 
 }

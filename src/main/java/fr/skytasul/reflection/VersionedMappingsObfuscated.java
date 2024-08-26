@@ -9,6 +9,8 @@ import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class VersionedMappingsObfuscated implements VersionedMappings {
 
@@ -65,11 +67,6 @@ public class VersionedMappingsObfuscated implements VersionedMappings {
 		}
 
 		@Override
-		public String getTypeName() {
-			return original;
-		}
-
-		@Override
 		public @NotNull Type getArrayType() {
 			if (arrayType == null)
 				arrayType = new ClassHandleArray();
@@ -107,13 +104,7 @@ public class VersionedMappingsObfuscated implements VersionedMappings {
 			for (MethodHandle method : methods)
 				if (method.original.equals(original) && Arrays.equals(method.parameterTypes, parameterTypes))
 					return method;
-			throw new NoSuchMethodException(original);
-		}
-
-		@Override
-		public @NotNull Method getMappedMethod(@NotNull String original, @NotNull Type... parameterTypes)
-				throws NoSuchMethodException, SecurityException, ClassNotFoundException {
-			return getMethod(original, parameterTypes).getMappedMethod();
+			throw new NoSuchMethodException(getStringForMethod(original, parameterTypes));
 		}
 
 		@Override
@@ -253,6 +244,10 @@ public class VersionedMappingsObfuscated implements VersionedMappings {
 			array[i] = type;
 		}
 		return array;
+	}
+
+	protected static @NotNull String getStringForMethod(@NotNull String methodName, @NotNull Type... parameterTypes) {
+		return methodName + Stream.of(parameterTypes).map(Type::getTypeName).collect(Collectors.joining(", ", "(", ")"));
 	}
 
 }

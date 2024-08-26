@@ -62,7 +62,7 @@ public class MappingFileWriter {
 	private void writeSingleMapping(@NotNull BufferedWriter writer, @NotNull VersionedMappings mappings)
 			throws IOException {
 		for (var mappedClass : mappings.getClasses()) {
-			writer.append("%s -> %s".formatted(mappedClass.getOriginalName(), mappedClass.getObfuscatedName()));
+			writer.append("%s -> %s:".formatted(mappedClass.getOriginalName(), mappedClass.getObfuscatedName()));
 			writer.newLine();
 
 			for (var mappedField : mappedClass.getFields()) {

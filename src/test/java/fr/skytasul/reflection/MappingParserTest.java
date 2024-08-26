@@ -1,5 +1,6 @@
 package fr.skytasul.reflection;
 
+import static fr.skytasul.reflection.TestUtils.getLines;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -10,7 +11,6 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 class MappingParserTest {
 
@@ -26,11 +26,10 @@ class MappingParserTest {
 
 	@Test
 	void testParseEmptyClass() {
-		var lines = Arrays.asList("""
+		reader.parseAndFill(getLines("""
 				# comment that should be ignored
 				net.minecraft.world.entity.Interaction -> abc:
-				""".split("\\n"));
-		reader.parseAndFill(lines);
+				"""));
 		assertEquals(1, mappings.classes.size());
 
 		var parsedClass = mappings.classes.get(0);
@@ -42,12 +41,11 @@ class MappingParserTest {
 
 	@Test
 	void testParseFullClass() {
-		var lines = Arrays.asList("""
+		reader.parseAndFill(getLines("""
 				net.minecraft.world.entity.Interaction -> abc:
 				    java.lang.String stringField -> a
 				    67:85:void voidMethod(int) -> a
-				""".split("\\n"));
-		reader.parseAndFill(lines);
+				"""));
 		assertEquals(1, mappings.classes.size());
 
 		var parsedClass = mappings.classes.get(0);
@@ -68,13 +66,12 @@ class MappingParserTest {
 
 	@Test
 	void testParseTwoClasses() {
-		var lines = Arrays.asList("""
+		reader.parseAndFill(getLines("""
 				net.minecraft.world.entity.Interaction -> abc:
 				    java.lang.String stringField -> a
 				net.minecraft.world.entity.Marker -> xyz:
 				    10:11:boolean boolMethod() -> b
-				""".split("\\n"));
-		reader.parseAndFill(lines);
+				"""));
 		assertEquals(2, mappings.classes.size());
 
 		var parsedClass = mappings.classes.get(0);

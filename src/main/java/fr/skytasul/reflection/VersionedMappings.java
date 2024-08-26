@@ -27,6 +27,11 @@ public interface VersionedMappings {
 
 	interface MappedClass extends Type, MappedNamedObject {
 
+		@Override
+		default @NotNull String getTypeName() {
+			return getOriginalName();
+		}
+
 		@NotNull
 		Type getArrayType();
 
@@ -51,7 +56,7 @@ public interface VersionedMappings {
 		@NotNull
 		default Method getMappedMethod(@NotNull String original, @NotNull Type... parameterTypes)
 				throws NoSuchMethodException, ClassNotFoundException {
-			return getMethod(original).getMappedMethod();
+			return getMethod(original, parameterTypes).getMappedMethod();
 		}
 
 		Collection<? extends MappedMethod> getMethods();
