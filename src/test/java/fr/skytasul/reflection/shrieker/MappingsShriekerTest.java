@@ -76,7 +76,7 @@ class MappingsShriekerTest {
 
 	static VersionedMappings parseMappings(Version version, String lines) {
 		var mappings = new VersionedMappingsObfuscated(version);
-		new MappingParser(mappings).parseAndFill(getLines(lines));
+		new ProguardMappingParser(mappings).parseAndFill(getLines(lines));
 		return mappings;
 	}
 

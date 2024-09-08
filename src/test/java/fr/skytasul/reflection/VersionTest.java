@@ -1,5 +1,6 @@
 package fr.skytasul.reflection;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -31,6 +32,18 @@ class VersionTest {
 	void testParseWithOmit(String version) {
 		var parsedVersion = Version.parse(version);
 		assertEquals(version, parsedVersion.toString(true));
+	}
+
+	@Test
+	void testParseArray() {
+		var parsed = Version.parseArray("1.2.3", "1.2.4", "0.5.1", "3.0");
+
+		assertArrayEquals(new Version[] {
+				new Version(1, 2, 3),
+				new Version(1, 2, 4),
+				new Version(0, 5, 1),
+				new Version(3, 0, 0)
+		}, parsed);
 	}
 
 	@ParameterizedTest

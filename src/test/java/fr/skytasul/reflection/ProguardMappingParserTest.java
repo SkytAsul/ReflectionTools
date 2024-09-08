@@ -12,16 +12,16 @@ import java.io.InputStreamReader;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 
-class MappingParserTest {
+class ProguardMappingParserTest {
 
 	private VersionedMappingsObfuscated mappings;
-	private MappingParser reader;
+	private ProguardMappingParser reader;
 
 	@BeforeEach
 	void setUp() {
 		mappings = new VersionedMappingsObfuscated(Version.ZERO);
 		mappings.classes = new ArrayList<>();
-		reader = new MappingParser(mappings);
+		reader = new ProguardMappingParser(mappings);
 	}
 
 	@Test

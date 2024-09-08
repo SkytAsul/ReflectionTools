@@ -1,6 +1,7 @@
 package fr.skytasul.reflection;
 
 import org.jetbrains.annotations.NotNull;
+import java.util.stream.Stream;
 
 public record Version(int major, int minor, int patch) implements Comparable<Version> {
 
@@ -111,6 +112,10 @@ public record Version(int major, int minor, int patch) implements Comparable<Ver
 		int patch = parts.length == 3 ? Integer.parseInt(parts[2]) : 0;
 
 		return new Version(major, minor, patch);
+	}
+
+	public static @NotNull Version @NotNull [] parseArray(String... versions) {
+		return Stream.of(versions).map(Version::parse).toArray(Version[]::new);
 	}
 
 }

@@ -1,7 +1,7 @@
 package fr.skytasul.reflection;
 
 import static fr.skytasul.reflection.TestUtils.getLines;
-import static fr.skytasul.reflection.TestUtils.getVersionArray;
+import static fr.skytasul.reflection.Version.parseArray;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -34,7 +34,7 @@ class MappingFileReaderTest {
 		var targetVersion = Version.parse(target);
 		var expectedVersion = expectedResult == null ? null : Version.parse(expectedResult);
 		var match = MappingFileReader.getBestMatchedVersion(targetVersion,
-				List.of(getVersionArray("1.19.1", "1.19.5", "1.20.2", "1.20.4", "1.20.6")));
+				List.of(parseArray("1.19.1", "1.19.5", "1.20.2", "1.20.4", "1.20.6")));
 
 		assertEquals(expectedVersion, match.orElse(null));
 	}
@@ -52,7 +52,7 @@ class MappingFileReaderTest {
 					"""));
 			var versions = reader.readAvailableVersions();
 
-			assertArrayEquals(getVersionArray("1.0.0", "1.1.0", "1.2.0"), versions.toArray());
+			assertArrayEquals(parseArray("1.0.0", "1.1.0", "1.2.0"), versions.toArray());
 		});
 	}
 
@@ -88,7 +88,7 @@ class MappingFileReaderTest {
 			assertFalse(reader.keepOnlyVersion(new Version(1, 3, 0)));
 			assertTrue(reader.keepOnlyVersion(new Version(1, 1, 0)));
 
-			assertArrayEquals(getVersionArray("1.1.0"), reader.getAvailableVersions().toArray());
+			assertArrayEquals(parseArray("1.1.0"), reader.getAvailableVersions().toArray());
 		});
 	}
 
@@ -108,7 +108,7 @@ class MappingFileReaderTest {
 			var versionMatch = reader.keepBestMatchedVersion(new Version(1, 1, 2));
 			assertEquals(new Version(1, 1, 0), versionMatch.orElseThrow());
 
-			assertArrayEquals(getVersionArray("1.1.0"), reader.getAvailableVersions().toArray());
+			assertArrayEquals(parseArray("1.1.0"), reader.getAvailableVersions().toArray());
 		});
 	}
 

@@ -120,7 +120,7 @@ public class MappingFileReader {
 
 	public void parseMappings() {
 		for (var version : mappings) {
-			MappingParser parser = new MappingParser(version.mappings);
+			MappingParser parser = new ProguardMappingParser(version.mappings);
 			List<String> linesToParse;
 			if (version.firstLine == -1 && version.lastLine == -1)
 				// plain mappings file containing only one version
