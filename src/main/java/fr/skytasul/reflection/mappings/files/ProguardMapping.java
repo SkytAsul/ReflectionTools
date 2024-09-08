@@ -1,16 +1,22 @@
-package fr.skytasul.reflection;
+package fr.skytasul.reflection.mappings.files;
 
-import fr.skytasul.reflection.VersionedMappingsObfuscated.ClassHandle;
+import fr.skytasul.reflection.mappings.Mappings;
+import fr.skytasul.reflection.mappings.RealMappings;
+import fr.skytasul.reflection.mappings.RealMappings.RealClassMapping;
+import fr.skytasul.reflection.mappings.RealMappings.RealClassMapping.RealFieldMapping;
+import fr.skytasul.reflection.mappings.RealMappings.RealClassMapping.RealMethodMapping;
 import org.jetbrains.annotations.NotNull;
+import java.io.BufferedWriter;
+import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Reads ProGuard obfuscation map.
@@ -22,7 +28,7 @@ import java.util.regex.Pattern;
  * <li>for methods, it is acceptable not to have the line index prefix
  * </ul>
  */
-public class ProguardMappingParser implements MappingParser {
+public class ProguardMapping implements MappingType {
 
 	private static final Map<String, Class<?>> PRIMITIVES = Map.of(
 			"boolean", boolean.class,
@@ -44,24 +50,15 @@ public class ProguardMappingParser implements MappingParser {
 
 	private static final Pattern METHOD_PARAMETERS_REGEX = Pattern.compile("([\\w.$]+)(\\[\\])?,?");
 
-	private Map<String, ClassHandle> fakeHandles = new HashMap<>();
-	private boolean failOnLineParse = false;
+	private final boolean failOnLineParse;
 
-	private @NotNull VersionedMappingsObfuscated mappings;
-
-	public ProguardMappingParser(@NotNull VersionedMappingsObfuscated mappings) {
-		this.mappings = mappings;
-	}
-
-	@Override
-	public @NotNull MappingParser setFailOnLineParse(boolean failOnLineParse) {
+	public ProguardMapping(boolean failOnLineParse) {
 		this.failOnLineParse = failOnLineParse;
-		return this;
 	}
 
 	@Override
-	public void parseAndFill(@NotNull List<String> lines) {
-		List<ObfuscatedClass> classes = new ArrayList<>();
+	public Mappings parse(@NotNull List<String> lines) {
+		List<ObfuscatedClass> parsedClasses = new ArrayList<>();
 
 		String classOriginal = null, classObfuscated = null;
 		List<ObfuscatedMethod> classMethods = null;
@@ -75,7 +72,7 @@ public class ProguardMappingParser implements MappingParser {
 			if ((classMatch = CLASS_REGEX.matcher(line)).matches()) {
 				// class: we need to close the previous class
 				if (classOriginal != null)
-					classes.add(new ObfuscatedClass(classOriginal, classObfuscated, classMethods, classFields));
+					parsedClasses.add(new ObfuscatedClass(classOriginal, classObfuscated, classMethods, classFields));
 
 				classOriginal = classMatch.group("original");
 				classObfuscated = classMatch.group("obfuscated");
@@ -95,29 +92,32 @@ public class ProguardMappingParser implements MappingParser {
 		}
 		// we close the last class
 		if (classOriginal != null)
-			classes.add(new ObfuscatedClass(classOriginal, classObfuscated, classMethods, classFields));
+			parsedClasses.add(new ObfuscatedClass(classOriginal, classObfuscated, classMethods, classFields));
 
-		LOGGER.log(Level.FINE, "Found {0} classes to remap", classes.size());
+		LOGGER.log(Level.FINE, "Found {0} classes to remap", parsedClasses.size());
 
-		// we first create all the ClassHandles BEFORE creating the methods because we need references to
-		// the ClassHandle for method parameters
-		mappings.classes = classes.stream().map(clazz -> new ClassHandle(clazz.original, clazz.obfuscated)).toList();
-		for (var clazz : classes) {
-			try {
-				ClassHandle handle = mappings.getClass(clazz.original);
+		var fakeHandles = new HashMap<String, RealClassMapping>();
+		var classes = parsedClasses.stream()
+				.map(clazz -> new RealClassMapping(clazz.original, clazz.obfuscated, new ArrayList<>(), new ArrayList<>()))
+				.collect(Collectors.toMap(RealClassMapping::getOriginalName, Function.identity()));
+		for (var parsedClass : parsedClasses) {
+			var classMapping = classes.get(parsedClass.original);
 
-				handle.fields = clazz.fields.stream().map(field -> handle.new FieldHandle(field.original, field.obfuscated))
-						.toList();
-				handle.methods = clazz.methods.stream().map(method -> handle.new MethodHandle(method.original,
-						method.obfuscated, parseParameters(method.parameters))).toList();
-			} catch (ClassNotFoundException ex) {
-				// cannot happen
-				throw new Error(ex);
-			}
+			classMapping.fields().addAll(parsedClass.fields
+					.stream()
+					.map(field -> new RealFieldMapping(field.original, field.obfuscated))
+					.toList());
+			classMapping.methods().addAll(parsedClass.methods
+					.stream()
+					.map(method -> new RealMethodMapping(method.original, method.obfuscated,
+							parseParameters(method.parameters, fakeHandles, classes)))
+					.toList());
 		}
+		return new RealMappings(classes.values());
 	}
 
-	protected @NotNull Type @NotNull [] parseParameters(@NotNull String parameters) {
+	protected @NotNull Type @NotNull [] parseParameters(@NotNull String parameters,
+			Map<@NotNull String, RealClassMapping> fakeHandles, Map<@NotNull String, RealClassMapping> classes) {
 		List<Type> types = new ArrayList<>(2);
 
 		Matcher matcher = METHOD_PARAMETERS_REGEX.matcher(parameters);
@@ -125,21 +125,20 @@ public class ProguardMappingParser implements MappingParser {
 			String typeName = matcher.group(1);
 			boolean isArray = matcher.group(2) != null;
 
-			ClassHandle handle = null;
 			Class<?> clazz = null;
-			try {
-				handle = mappings.getClass(typeName);
-			} catch (ClassNotFoundException __) {
+			RealClassMapping handle = classes.get(typeName);
+			if (handle == null) {
 				// the type is not present in the mappings: must be a primitive or a Java library type
 				clazz = PRIMITIVES.get(typeName);
 				if (clazz == null) {
 					// the type is not a primitive: must be a library type
 					try {
 						clazz = Class.forName(typeName);
-					} catch (ClassNotFoundException ___) {
+					} catch (ClassNotFoundException __) {
 						if (!fakeHandles.containsKey(typeName)) {
 							LOGGER.log(Level.FINER, "Cannot find class {0}", typeName);
-							fakeHandles.put(typeName, new ClassHandle(typeName, typeName)); // not ideal
+							fakeHandles.put(typeName, new RealClassMapping(typeName, typeName, Collections.emptyList(),
+									Collections.emptyList())); // not ideal
 						}
 						handle = fakeHandles.get(typeName);
 					}
@@ -156,6 +155,28 @@ public class ProguardMappingParser implements MappingParser {
 		}
 
 		return types.toArray(Type[]::new);
+	}
+
+	@Override
+	public void write(@NotNull BufferedWriter writer, @NotNull Mappings mappings) throws IOException {
+		for (var mappedClass : mappings.getClasses()) {
+			writer.append("%s -> %s:".formatted(mappedClass.getOriginalName(), mappedClass.getMappedName()));
+			writer.newLine();
+
+			for (var mappedField : mappedClass.getFields()) {
+				writer.append("    %s -> %s".formatted(mappedField.getOriginalName(), mappedField.getMappedName()));
+				writer.newLine();
+			}
+
+			for (var mappedMethod : mappedClass.getMethods()) {
+				String parameters = Stream.of(mappedMethod.getParameterTypes())
+						.map(parameter -> parameter.getTypeName())
+						.collect(Collectors.joining(","));
+				writer.append("    %s(%s) -> %s".formatted(mappedMethod.getOriginalName(), parameters,
+						mappedMethod.getMappedName()));
+				writer.newLine();
+			}
+		}
 	}
 
 	private record ObfuscatedClass(String original, String obfuscated, List<ObfuscatedMethod> methods,

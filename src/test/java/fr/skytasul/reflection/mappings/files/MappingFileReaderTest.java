@@ -1,4 +1,4 @@
-package fr.skytasul.reflection;
+package fr.skytasul.reflection.mappings.files;
 
 import static fr.skytasul.reflection.TestUtils.getLines;
 import static fr.skytasul.reflection.Version.parseArray;
@@ -9,12 +9,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import fr.skytasul.reflection.Version;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import java.util.List;
 
 class MappingFileReaderTest {
+
+	private final ProguardMapping mappingType = new ProguardMapping(false);
 
 	@ParameterizedTest
 	@CsvSource(value = {
@@ -42,7 +45,7 @@ class MappingFileReaderTest {
 	@Test
 	void testCorrectHeader() {
 		assertDoesNotThrow(() -> {
-			var reader = new MappingFileReader(getLines("""
+			var reader = new MappingFileReader(mappingType, getLines("""
 				# ignored line
 				# reflection-remapper | AVAILABLE VERSIONS
 				# reflection-remapper | 1.0.0 10-20
@@ -59,12 +62,12 @@ class MappingFileReaderTest {
 	@Test
 	void testIncorrectHeader() {
 		assertThrows(IllegalArgumentException.class, () -> {
-			new MappingFileReader(getLines("""
+			new MappingFileReader(mappingType, getLines("""
 					# nothing here
 					""")).readAvailableVersions();
 		});
 		assertThrows(IllegalArgumentException.class, () -> {
-			new MappingFileReader(getLines("""
+			new MappingFileReader(mappingType, getLines("""
 					# reflection-remapper | AVAILABLE VERSIONS
 					# reflection-remapper | 1.0.0 10-20
 					# no end to the versions
@@ -75,7 +78,7 @@ class MappingFileReaderTest {
 	@Test
 	void testKeepVersion() {
 		assertDoesNotThrow(() -> {
-			var reader = new MappingFileReader(getLines("""
+			var reader = new MappingFileReader(mappingType, getLines("""
 					# ignored line
 					# reflection-remapper | AVAILABLE VERSIONS
 					# reflection-remapper | 1.0.0 10-20
@@ -95,7 +98,7 @@ class MappingFileReaderTest {
 	@Test
 	void testKeepBestVersion() {
 		assertDoesNotThrow(() -> {
-			var reader = new MappingFileReader(getLines("""
+			var reader = new MappingFileReader(mappingType, getLines("""
 					# ignored line
 					# reflection-remapper | AVAILABLE VERSIONS
 					# reflection-remapper | 1.0.0 10-20
@@ -115,7 +118,7 @@ class MappingFileReaderTest {
 	@Test
 	void testParseMappings() {
 		assertDoesNotThrow(() -> {
-			var reader = new MappingFileReader(getLines("""
+			var reader = new MappingFileReader(mappingType, getLines("""
 					# reflection-remapper | AVAILABLE VERSIONS
 					# reflection-remapper | 1.0.0 4-5
 					# reflection-remapper | 1.1.0 6-7

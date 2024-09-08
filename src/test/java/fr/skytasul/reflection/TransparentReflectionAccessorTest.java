@@ -8,13 +8,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.lang.reflect.Field;
 
-class VersionedMappingsTransparentTest {
+class TransparentReflectionAccessorTest {
 
-	private VersionedMappingsTransparent instance;
+	private TransparentReflectionAccessor instance;
 
 	@BeforeEach
 	void setUp() throws Exception {
-		this.instance = new VersionedMappingsTransparent(Version.ZERO);
+		this.instance = new TransparentReflectionAccessor();
 	}
 
 	@Test
@@ -23,9 +23,8 @@ class VersionedMappingsTransparentTest {
 		assertDoesNotThrow(() -> {
 			var mappedClass = instance.getClass(clazz.getName());
 
-			assertEquals(clazz, mappedClass.getMappedClass());
+			assertEquals(clazz, mappedClass.getClassInstance());
 			assertEquals(clazz.arrayType(), mappedClass.getArrayType());
-			assertEquals(clazz.getName(), mappedClass.getOriginalName());
 		});
 	}
 
@@ -45,12 +44,11 @@ class VersionedMappingsTransparentTest {
 			assertDoesNotThrow(() -> {
 				var mappedClass = instance.getClass(DummyTestClass.class.getName());
 
-				assertEquals(realField, mappedClass.getMappedField(fieldName));
+				assertEquals(realField, mappedClass.getFieldInstance(fieldName));
 
 				var mappedField = mappedClass.getField(fieldName);
 
-				assertEquals(realField, mappedField.getMappedField());
-				assertEquals(fieldName, mappedField.getOriginalName());
+				assertEquals(realField, mappedField.getFieldInstance());
 
 				var classInstance = new DummyTestClass(paramValue1);
 				assertEquals(paramValue1, mappedField.get(classInstance));

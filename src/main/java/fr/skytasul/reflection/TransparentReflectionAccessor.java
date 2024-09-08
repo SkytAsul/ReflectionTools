@@ -1,32 +1,23 @@
 package fr.skytasul.reflection;
 
-import fr.skytasul.reflection.VersionedMappings.MappedClass.MappedConstructor;
-import fr.skytasul.reflection.VersionedMappings.MappedClass.MappedField;
-import fr.skytasul.reflection.VersionedMappings.MappedClass.MappedMethod;
+import fr.skytasul.reflection.ReflectionAccessor.ClassAccessor.ConstructorAccessor;
+import fr.skytasul.reflection.ReflectionAccessor.ClassAccessor.FieldAccessor;
+import fr.skytasul.reflection.ReflectionAccessor.ClassAccessor.MethodAccessor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import java.lang.reflect.*;
 import java.util.*;
 
 /**
- * "Mappings" whoose originals are directly remapped to real Java names, without obfuscation.
+ * Reflection accessor where originals are directly remapped to real Java names, without
+ * obfuscation.
  */
-public class VersionedMappingsTransparent implements VersionedMappings {
+public class TransparentReflectionAccessor implements ReflectionAccessor {
 
-	private final @NotNull Version version;
 	private final Map<String, MappedClassTransparent> classes = new HashMap<>();
 
-	public VersionedMappingsTransparent(@NotNull Version version) {
-		this.version = version;
-	}
-
 	@Override
-	public @NotNull Version getVersion() {
-		return version;
-	}
-
-	@Override
-	public @NotNull MappedClass getClass(@NotNull String name) throws ClassNotFoundException {
+	public @NotNull ClassAccessor getClass(@NotNull String name) throws ClassNotFoundException {
 		var clazz = classes.get(name);
 		if (clazz == null) {
 			clazz = new MappedClassTransparent(Class.forName(name));
@@ -35,12 +26,7 @@ public class VersionedMappingsTransparent implements VersionedMappings {
 		return clazz;
 	}
 
-	@Override
-	public Collection<? extends MappedClass> getClasses() {
-		return classes.values();
-	}
-
-	private class MappedClassTransparent implements MappedClass {
+	private class MappedClassTransparent implements ClassAccessor {
 
 		private final @NotNull Class<?> clazz;
 
@@ -52,13 +38,8 @@ public class VersionedMappingsTransparent implements VersionedMappings {
 		}
 
 		@Override
-		public @NotNull String getOriginalName() {
-			return clazz.getName();
-		}
-
-		@Override
-		public @NotNull String getObfuscatedName() {
-			return clazz.getName();
+		public @NotNull String getTypeName() {
+			return clazz.getTypeName();
 		}
 
 		@Override
@@ -67,24 +48,14 @@ public class VersionedMappingsTransparent implements VersionedMappings {
 		}
 
 		@Override
-		public @NotNull Class<?> getMappedClass() throws ClassNotFoundException {
+		public @NotNull Class<?> getClassInstance() throws ClassNotFoundException {
 			return clazz;
 		}
 
 		@Override
-		public Collection<? extends MappedField> getFields() {
-			return fields;
-		}
-
-		@Override
-		public Collection<? extends MappedMethod> getMethods() {
-			return methods;
-		}
-
-		@Override
-		public @NotNull MappedField getField(@NotNull String original) throws NoSuchFieldException {
+		public @NotNull FieldAccessor getField(@NotNull String original) throws NoSuchFieldException {
 			for (var field : fields)
-				if (field.getOriginalName().equals(original))
+				if (field.field.getName().equals(original))
 					return field;
 
 			var field = new TransparentField(clazz.getDeclaredField(original));
@@ -93,23 +64,22 @@ public class VersionedMappingsTransparent implements VersionedMappings {
 		}
 
 		@Override
-		public @NotNull MappedMethod getMethod(@NotNull String original, @NotNull Type... parameterTypes)
+		public @NotNull MethodAccessor getMethod(@NotNull String original, @NotNull Type... parameterTypes)
 				throws NoSuchMethodException, ClassNotFoundException {
 			for (var method : methods)
-				if (method.getOriginalName().equals(original) && Arrays.equals(method.getParameterTypes(), parameterTypes))
+				if (method.getMethodInstance().getName().equals(original)
+						&& Arrays.equals(parameterTypes, method.getMethodInstance().getParameterTypes()))
 					return method;
 
-			var method = new TransparentMethod(clazz.getDeclaredMethod(original,
-					VersionedMappingsObfuscated.getClassesFromHandles(parameterTypes)));
+			var method = new TransparentMethod(clazz.getDeclaredMethod(original, getClassesFromUserTypes(parameterTypes)));
 			methods.add(method);
 			return method;
 		}
 
 		@Override
-		public @NotNull MappedConstructor getConstructor(@NotNull Type... parameterTypes)
+		public @NotNull ConstructorAccessor getConstructor(@NotNull Type... parameterTypes)
 				throws NoSuchMethodException, SecurityException, ClassNotFoundException {
-			var constructor =
-					clazz.getDeclaredConstructor(VersionedMappingsObfuscated.getClassesFromHandles(parameterTypes));
+			var constructor = clazz.getDeclaredConstructor(getClassesFromUserTypes(parameterTypes));
 			return new TransparentConstructor(constructor);
 		}
 
@@ -122,7 +92,7 @@ public class VersionedMappingsTransparent implements VersionedMappings {
 
 	}
 
-	protected static class TransparentField implements MappedField {
+	protected static class TransparentField implements FieldAccessor {
 
 		private final @NotNull Field field;
 
@@ -132,17 +102,7 @@ public class VersionedMappingsTransparent implements VersionedMappings {
 		}
 
 		@Override
-		public @NotNull String getOriginalName() {
-			return field.getName();
-		}
-
-		@Override
-		public @NotNull String getObfuscatedName() {
-			return field.getName();
-		}
-
-		@Override
-		public Field getMappedField() {
+		public Field getFieldInstance() {
 			return field;
 		}
 
@@ -158,7 +118,7 @@ public class VersionedMappingsTransparent implements VersionedMappings {
 
 	}
 
-	protected static class TransparentMethod implements MappedMethod {
+	protected static class TransparentMethod implements MethodAccessor {
 
 		private final @NotNull Method method;
 
@@ -168,22 +128,7 @@ public class VersionedMappingsTransparent implements VersionedMappings {
 		}
 
 		@Override
-		public @NotNull String getOriginalName() {
-			return method.getName();
-		}
-
-		@Override
-		public @NotNull String getObfuscatedName() {
-			return method.getName();
-		}
-
-		@Override
-		public @NotNull Type @NotNull [] getParameterTypes() {
-			return method.getParameterTypes();
-		}
-
-		@Override
-		public Method getMappedMethod() {
+		public Method getMethodInstance() {
 			return method;
 		}
 
@@ -195,7 +140,7 @@ public class VersionedMappingsTransparent implements VersionedMappings {
 
 	}
 
-	protected static class TransparentConstructor implements MappedConstructor {
+	protected static class TransparentConstructor implements ConstructorAccessor {
 
 		private final @NotNull Constructor<?> constructor;
 
@@ -205,7 +150,7 @@ public class VersionedMappingsTransparent implements VersionedMappings {
 		}
 
 		@Override
-		public Constructor<?> getMappedConstructor() {
+		public Constructor<?> getConstructorInstance() {
 			return constructor;
 		}
 
@@ -215,6 +160,21 @@ public class VersionedMappingsTransparent implements VersionedMappings {
 			return constructor.newInstance(args);
 		}
 
+	}
+
+	protected Class<?>[] getClassesFromUserTypes(Type[] handles) throws ClassNotFoundException {
+		Class<?>[] array = new Class<?>[handles.length];
+		for (int i = 0; i < handles.length; i++) {
+			Class<?> type;
+			if (handles[i] instanceof Class<?> clazz)
+				type = clazz;
+			else if (handles[i] instanceof MappedClassTransparent mapped)
+				type = mapped.getClassInstance();
+			else
+				throw new IllegalArgumentException();
+			array[i] = type;
+		}
+		return array;
 	}
 
 }

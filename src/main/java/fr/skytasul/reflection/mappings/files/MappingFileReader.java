@@ -1,10 +1,10 @@
-package fr.skytasul.reflection;
+package fr.skytasul.reflection.mappings.files;
 
+import fr.skytasul.reflection.Version;
+import fr.skytasul.reflection.mappings.Mappings;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -17,6 +17,7 @@ public class MappingFileReader {
 	private static final Pattern VERSION_PATTERN = Pattern.compile(
 			"# reflection-remapper \\| (?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+) (?<firstline>\\d+)-(?<lastline>\\d+)");
 
+	private final @NotNull MappingType mappingType;
 	private final @NotNull List<String> lines;
 
 	private @Nullable List<VersionPart> mappings;
@@ -24,45 +25,28 @@ public class MappingFileReader {
 	/**
 	 * Creates a reader for a composite mappings file.
 	 *
+	 * @param mappingType type of mappings in this file
 	 * @param lines of the mappings file
 	 * @throws IOException
 	 */
-	public MappingFileReader(@NotNull List<String> lines) throws IOException {
+	public MappingFileReader(@NotNull MappingType mappingType, @NotNull List<String> lines) throws IOException {
+		this.mappingType = mappingType;
 		this.lines = lines;
 	}
 
 	/**
-	 * Creates a reader for a composite mappings file.
-	 *
-	 * @param path path to the mappings file
-	 * @throws IOException
-	 */
-	public MappingFileReader(@NotNull Path path) throws IOException {
-		this(Files.readAllLines(path));
-	}
-
-	/**
 	 * Creates a reader for a plain mappings file, associated with its version.
 	 *
+	 * @param mappingType type of mappings in this file
 	 * @param lines of the mappings file
 	 * @param version version of the mappings
 	 * @throws IOException
 	 */
-	public MappingFileReader(@NotNull List<String> lines, @NotNull Version version) throws IOException {
-		this(lines);
+	public MappingFileReader(@NotNull MappingType mappingType, @NotNull List<String> lines,
+			@NotNull Version version) throws IOException {
+		this(mappingType, lines);
 
-		mappings = List.of(new VersionPart(new VersionedMappingsObfuscated(version), -1, -1));
-	}
-
-	/**
-	 * Creates a reader for a plain mappings file, associated with its version.
-	 *
-	 * @param path path to the mappings file
-	 * @param version version of the mappings
-	 * @throws IOException
-	 */
-	public MappingFileReader(@NotNull Path path, @NotNull Version version) throws IOException {
-		this(Files.readAllLines(path), version);
+		mappings = List.of(new VersionPart(version, -1, -1));
 	}
 
 	public @NotNull List<Version> readAvailableVersions() {
@@ -78,10 +62,10 @@ public class MappingFileReader {
 					return getAvailableVersions();
 			} else if (mappings != null && (versionMatcher = VERSION_PATTERN.matcher(line)).matches()) {
 				mappings.add(new VersionPart(
-						new VersionedMappingsObfuscated(new Version(
+						new Version(
 								Integer.parseInt(versionMatcher.group("major")),
 								Integer.parseInt(versionMatcher.group("minor")),
-								Integer.parseInt(versionMatcher.group("patch")))),
+								Integer.parseInt(versionMatcher.group("patch"))),
 						Integer.parseInt(versionMatcher.group("firstline")),
 						Integer.parseInt(versionMatcher.group("lastline"))));
 			}
@@ -98,12 +82,12 @@ public class MappingFileReader {
 		if (mappings == null)
 			throw new IllegalStateException("No versions are available for now");
 
-		return mappings.stream().map(x -> x.mappings.getVersion()).sorted().toList();
+		return mappings.stream().map(x -> x.version).sorted().toList();
 	}
 
 	public boolean keepOnlyVersion(@NotNull Version version) {
 		for (var mapping : mappings) {
-			if (version.equals(mapping.mappings.getVersion())) {
+			if (version.equals(mapping.version)) {
 				mappings = List.of(mapping);
 				return true;
 			}
@@ -120,7 +104,6 @@ public class MappingFileReader {
 
 	public void parseMappings() {
 		for (var version : mappings) {
-			MappingParser parser = new ProguardMappingParser(version.mappings);
 			List<String> linesToParse;
 			if (version.firstLine == -1 && version.lastLine == -1)
 				// plain mappings file containing only one version
@@ -128,15 +111,25 @@ public class MappingFileReader {
 			else
 				// composite file
 				linesToParse = lines.subList(version.firstLine, version.lastLine + 1);
-			parser.parseAndFill(linesToParse);
+			version.mappings = mappingType.parse(linesToParse);
 		}
 	}
 
-	public @NotNull VersionedMappings getParsedMappings(@NotNull Version version) {
-		return mappings.stream().filter(x -> x.mappings.getVersion().equals(version)).findAny().orElseThrow().mappings;
+	public @NotNull Mappings getParsedMappings(@NotNull Version version) {
+		return mappings.stream().filter(x -> x.version.equals(version)).findAny().orElseThrow().mappings;
 	}
 
-	private record VersionPart(VersionedMappingsObfuscated mappings, int firstLine, int lastLine) {
+	private class VersionPart {
+		private final Version version;
+		private final int firstLine;
+		private final int lastLine;
+		private Mappings mappings;
+
+		private VersionPart(Version version, int firstLine, int lastLine) {
+			this.version = version;
+			this.firstLine = firstLine;
+			this.lastLine = lastLine;
+		}
 	}
 
 	/**

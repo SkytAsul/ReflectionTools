@@ -3,12 +3,17 @@ package fr.skytasul.reflection.shrieker;
 import static fr.skytasul.reflection.TestUtils.getLines;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import fr.skytasul.reflection.*;
+import fr.skytasul.reflection.Version;
+import fr.skytasul.reflection.mappings.Mappings;
+import fr.skytasul.reflection.mappings.files.MappingFileWriter;
+import fr.skytasul.reflection.mappings.files.ProguardMapping;
 import org.junit.jupiter.api.Test;
 import java.io.StringWriter;
-import java.util.List;
+import java.util.Map;
 
 class MappingsShriekerTest {
+
+	private static final ProguardMapping MAPPING_TYPE = new ProguardMapping(false);
 
 	@Test
 	void testKeepEverything() {
@@ -18,7 +23,7 @@ class MappingsShriekerTest {
 				    67:85:void voidMethod(int) -> a
 				""");
 
-		var shrieker = new MappingsShrieker(mappingsToFill -> {
+		var shrieker = new MappingsShrieker(MAPPING_TYPE, mappingsToFill -> {
 			assertDoesNotThrow(() -> {
 				var clazz = mappingsToFill.getClass("some.package.SomeClass");
 				clazz.getField("stringField").get(null);
@@ -32,7 +37,6 @@ class MappingsShriekerTest {
 
 		assertEquals(1, shrieker.getReducedMappings().size());
 
-		var reducedMappings = shrieker.getReducedMappings().get(0);
 		assertEquals("""
 				# reflection-remapper | AVAILABLE VERSIONS
 				# reflection-remapper | 0.0.0 3-5
@@ -40,7 +44,7 @@ class MappingsShriekerTest {
 				some.package.SomeClass -> abc:
 				    stringField -> a
 				    voidMethod(int) -> a
-				""", writeMappings(reducedMappings));
+				""", writeMappings(shrieker.getReducedMappings()));
 	}
 
 	@Test
@@ -54,7 +58,7 @@ class MappingsShriekerTest {
 				    67:85:int intMethod() -> b
 				""");
 
-		var shrieker = new MappingsShrieker(mappingsToFill -> {
+		var shrieker = new MappingsShrieker(MAPPING_TYPE, mappingsToFill -> {
 			mappingsToFill.getClass("some.other.package.SomeOtherClass").getMethod("intMethod");
 		});
 
@@ -64,25 +68,22 @@ class MappingsShriekerTest {
 
 		assertEquals(1, shrieker.getReducedMappings().size());
 
-		var reducedMappings = shrieker.getReducedMappings().get(0);
 		assertEquals("""
 				# reflection-remapper | AVAILABLE VERSIONS
 				# reflection-remapper | 0.0.0 3-4
 				# reflection-remapper | AVAILABLE VERSIONS
 				some.other.package.SomeOtherClass -> abd:
 				    intMethod() -> b
-				""", writeMappings(reducedMappings));
+				""", writeMappings(shrieker.getReducedMappings()));
 	}
 
-	static VersionedMappings parseMappings(Version version, String lines) {
-		var mappings = new VersionedMappingsObfuscated(version);
-		new ProguardMappingParser(mappings).parseAndFill(getLines(lines));
-		return mappings;
+	static Mappings parseMappings(Version version, String lines) {
+		return MAPPING_TYPE.parse(getLines(lines));
 	}
 
-	static String writeMappings(VersionedMappings... mappings) {
+	static String writeMappings(Map<Version, Mappings> mappings) {
 		var writer = new StringWriter();
-		assertDoesNotThrow(new MappingFileWriter(writer, List.of(mappings))::writeAll);
+		assertDoesNotThrow(new MappingFileWriter(MAPPING_TYPE, writer, mappings)::writeAll);
 		return writer.toString();
 	}
 
