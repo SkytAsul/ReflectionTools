@@ -18,7 +18,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -97,7 +96,7 @@ public class MappingsShrieker {
 			for (var fakeMethod : fakeClass.methods()) {
 				MethodMapping fullMethod = fullClass.getMethods().stream()
 						.filter(x -> x.getOriginalName().equals(fakeMethod.name())
-								&& Arrays.equals(x.getParameterTypes(), fakeMethod.parameterTypes()))
+								&& x.isSameParameters(fakeMethod.parameterTypes()))
 						.findAny().orElseThrow(() -> new NoSuchMethodException(fakeClass.name() + "."
 								+ Mappings.getStringForMethod(fakeMethod.name(), fakeMethod.parameterTypes())));
 				reducedMethods.add(new RealMethodMapping(fakeMethod.name(), fullMethod.getMappedName(),

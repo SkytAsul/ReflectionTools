@@ -1,5 +1,6 @@
 package fr.skytasul.reflection.mappings;
 
+import fr.skytasul.reflection.ReflectionAccessor;
 import org.jetbrains.annotations.NotNull;
 import java.lang.reflect.Type;
 import java.util.Collection;
@@ -44,9 +45,13 @@ public interface Mappings {
 			@NotNull
 			Type @NotNull [] getParameterTypes();
 
+			public default boolean isSameParameters(@NotNull Type @NotNull [] types) {
+				return ReflectionAccessor.areSameParameters(getParameterTypes(), types);
+			}
+
 		}
 
-		record ClassArrayType(@NotNull ClassMapping componentMapping) implements Type {
+		record ClassArrayType(@NotNull Type componentMapping) implements Type {
 			@Override
 			public @NotNull String getTypeName() {
 				return componentMapping().getTypeName() + "[]";

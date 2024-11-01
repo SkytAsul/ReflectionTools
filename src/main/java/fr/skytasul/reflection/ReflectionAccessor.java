@@ -87,4 +87,13 @@ public interface ReflectionAccessor {
 
 	}
 
+	public static boolean areSameParameters(@NotNull Type @NotNull [] types1, @NotNull Type @NotNull [] types2) {
+		if (types1.length != types2.length)
+			return false;
+		for (int i = 0; i < types1.length; i++)
+			if (!types1[i].getTypeName().equals(types2[i].getTypeName()))
+				return false;
+		return true;
+	}
+
 }

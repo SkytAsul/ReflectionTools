@@ -9,7 +9,10 @@ import org.jetbrains.annotations.NotNull;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -40,7 +43,7 @@ public class ProguardMapping implements MappingType {
 			"double", double.class,
 			"char", char.class);
 
-	private static final Logger LOGGER = Logger.getLogger("MappingReader");
+	private static final Logger LOGGER = Logger.getLogger("ProguardMapping");
 
 	private static final Pattern CLASS_REGEX = Pattern.compile("(?<original>[\\w.$]+) -> (?<obfuscated>[\\w.$]+):");
 	private static final Pattern METHOD_REGEX = Pattern.compile(
@@ -96,7 +99,7 @@ public class ProguardMapping implements MappingType {
 
 		LOGGER.log(Level.FINE, "Found {0} classes to remap", parsedClasses.size());
 
-		var fakeHandles = new HashMap<String, RealClassMapping>();
+		var fakeTypes = new HashMap<String, Type>();
 		var classes = parsedClasses.stream()
 				.map(clazz -> new RealClassMapping(clazz.original, clazz.obfuscated, new ArrayList<>(), new ArrayList<>()))
 				.collect(Collectors.toMap(RealClassMapping::getOriginalName, Function.identity()));
@@ -110,14 +113,14 @@ public class ProguardMapping implements MappingType {
 			classMapping.methods().addAll(parsedClass.methods
 					.stream()
 					.map(method -> new RealMethodMapping(method.original, method.obfuscated,
-							parseParameters(method.parameters, fakeHandles, classes)))
+							parseParameters(method.parameters, fakeTypes, classes)))
 					.toList());
 		}
 		return new RealMappings(classes.values());
 	}
 
 	protected @NotNull Type @NotNull [] parseParameters(@NotNull String parameters,
-			Map<@NotNull String, RealClassMapping> fakeHandles, Map<@NotNull String, RealClassMapping> classes) {
+			Map<@NotNull String, Type> fakeTypes, Map<@NotNull String, RealClassMapping> classes) {
 		List<Type> types = new ArrayList<>(2);
 
 		Matcher matcher = METHOD_PARAMETERS_REGEX.matcher(parameters);
@@ -126,8 +129,8 @@ public class ProguardMapping implements MappingType {
 			boolean isArray = matcher.group(2) != null;
 
 			Class<?> clazz = null;
-			RealClassMapping handle = classes.get(typeName);
-			if (handle == null) {
+			Type type = classes.get(typeName);
+			if (type == null) {
 				// the type is not present in the mappings: must be a primitive or a Java library type
 				clazz = PRIMITIVES.get(typeName);
 				if (clazz == null) {
@@ -135,21 +138,19 @@ public class ProguardMapping implements MappingType {
 					try {
 						clazz = Class.forName(typeName);
 					} catch (ClassNotFoundException __) {
-						if (!fakeHandles.containsKey(typeName)) {
+						if (!fakeTypes.containsKey(typeName)) {
 							LOGGER.log(Level.FINER, "Cannot find class {0}", typeName);
-							fakeHandles.put(typeName, new RealClassMapping(typeName, typeName, Collections.emptyList(),
-									Collections.emptyList())); // not ideal
+							fakeTypes.put(typeName, new FakeType(typeName)); // not ideal
 						}
-						handle = fakeHandles.get(typeName);
+						type = fakeTypes.get(typeName);
 					}
 				}
 			}
 
-			Type type;
-			if (handle != null)
-				type = isArray ? handle.getArrayType() : handle;
-			else
+			if (clazz != null)
 				type = isArray ? clazz.arrayType() : clazz;
+			else if (isArray)
+				type = new Mappings.ClassMapping.ClassArrayType(type);
 
 			types.add(type);
 		}
@@ -187,6 +188,13 @@ public class ProguardMapping implements MappingType {
 	}
 
 	private record ObfuscatedField(String original, String obfuscated) {
+	}
+
+	protected static record FakeType(String name) implements Type {
+		@Override
+		public String getTypeName() {
+			return name;
+		}
 	}
 
 }

@@ -55,7 +55,8 @@ public class FakeReflectionAccessor implements ReflectionAccessor {
 		public @NotNull MethodAccessor getMethod(@NotNull String original, @NotNull Type... parameterTypes)
 				throws NoSuchMethodException, ClassNotFoundException {
 			for (var method : methods) {
-				if (method.name.equals(original) && Arrays.equals(method.parameterTypes, parameterTypes))
+				if (method.name.equals(original)
+						&& ReflectionAccessor.areSameParameters(method.parameterTypes, parameterTypes))
 					return method;
 			}
 			var method = new FakeMethod(original, parameterTypes);

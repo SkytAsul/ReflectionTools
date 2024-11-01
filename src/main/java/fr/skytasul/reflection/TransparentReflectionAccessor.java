@@ -6,7 +6,10 @@ import fr.skytasul.reflection.ReflectionAccessor.ClassAccessor.MethodAccessor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import java.lang.reflect.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Reflection accessor where originals are directly remapped to real Java names, without
@@ -68,7 +71,8 @@ public class TransparentReflectionAccessor implements ReflectionAccessor {
 				throws NoSuchMethodException, ClassNotFoundException {
 			for (var method : methods)
 				if (method.getMethodInstance().getName().equals(original)
-						&& Arrays.equals(parameterTypes, method.getMethodInstance().getParameterTypes()))
+						&& ReflectionAccessor.areSameParameters(parameterTypes,
+								method.getMethodInstance().getParameterTypes()))
 					return method;
 
 			var method = new TransparentMethod(clazz.getDeclaredMethod(original, getClassesFromUserTypes(parameterTypes)));
@@ -81,13 +85,6 @@ public class TransparentReflectionAccessor implements ReflectionAccessor {
 				throws NoSuchMethodException, SecurityException, ClassNotFoundException {
 			var constructor = clazz.getDeclaredConstructor(getClassesFromUserTypes(parameterTypes));
 			return new TransparentConstructor(constructor);
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			if (obj instanceof Type o)
-				return o.getTypeName().equals(clazz.getName());
-			return false;
 		}
 
 	}

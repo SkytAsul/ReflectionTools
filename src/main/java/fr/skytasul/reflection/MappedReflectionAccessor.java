@@ -11,7 +11,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -87,8 +86,7 @@ public class MappedReflectionAccessor implements ReflectionAccessor {
 		public @NotNull MethodHandle getMethod(@NotNull String original, @NotNull Type... parameterTypes)
 				throws NoSuchMethodException {
 			for (MethodHandle method : methods)
-				if (method.mapping.getOriginalName().equals(original)
-						&& Arrays.equals(method.mapping.getParameterTypes(), parameterTypes))
+				if (method.mapping.getOriginalName().equals(original) && method.mapping.isSameParameters(parameterTypes))
 					return method;
 			throw new NoSuchMethodException(Mappings.getStringForMethod(original, parameterTypes));
 		}
@@ -98,13 +96,6 @@ public class MappedReflectionAccessor implements ReflectionAccessor {
 				throws NoSuchMethodException, SecurityException, ClassNotFoundException {
 			var constructor = getClassInstance().getDeclaredConstructor(getClassesFromMappingTypes(parameterTypes));
 			return new TransparentReflectionAccessor.TransparentConstructor(constructor);
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			if (obj instanceof Type o)
-				return o.getTypeName().equals(getTypeName());
-			return false;
 		}
 
 		private class FieldHandle implements FieldAccessor {
@@ -182,7 +173,7 @@ public class MappedReflectionAccessor implements ReflectionAccessor {
 			else if (handles[i] instanceof ClassMapping mapping)
 				type = getClass(mapping.getOriginalName()).getClassInstance();
 			else if (handles[i] instanceof ClassArrayType mappingArray)
-				type = getClassInstance(mappingArray.componentMapping().getOriginalName()).arrayType();
+				type = getClassInstance(mappingArray.componentMapping().getTypeName()).arrayType();
 			else
 				throw new IllegalArgumentException();
 			array[i] = type;
