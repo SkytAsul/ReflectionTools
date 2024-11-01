@@ -30,7 +30,7 @@ public class SpigotClassMapping implements MappingType {
 
 			String[] columns = line.split(" ");
 			if (columns.length == 2) {
-				String original = columns[0];
+				String original = columns[0].replace('/', '.');
 				String mapped = columns[1].replace('/', '.');
 				classes.add(new RealClassMapping(original, mapped, List.of(), List.of()));
 			} else {

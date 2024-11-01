@@ -172,10 +172,12 @@ public class MappedReflectionAccessor implements ReflectionAccessor {
 				type = clazz;
 			else if (handles[i] instanceof ClassMapping mapping)
 				type = getClass(mapping.getOriginalName()).getClassInstance();
+			else if (handles[i] instanceof ClassHandle handle)
+				type = handle.getClassInstance();
 			else if (handles[i] instanceof ClassArrayType mappingArray)
 				type = getClassInstance(mappingArray.componentMapping().getTypeName()).arrayType();
 			else
-				throw new IllegalArgumentException();
+				throw new IllegalArgumentException(handles[i].getClass().toString());
 			array[i] = type;
 		}
 		return array;
