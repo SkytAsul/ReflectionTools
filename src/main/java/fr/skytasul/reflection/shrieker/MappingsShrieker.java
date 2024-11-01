@@ -10,12 +10,10 @@ import fr.skytasul.reflection.mappings.RealMappings;
 import fr.skytasul.reflection.mappings.RealMappings.RealClassMapping;
 import fr.skytasul.reflection.mappings.RealMappings.RealClassMapping.RealFieldMapping;
 import fr.skytasul.reflection.mappings.RealMappings.RealClassMapping.RealMethodMapping;
-import fr.skytasul.reflection.mappings.files.MappingFileReader;
 import fr.skytasul.reflection.mappings.files.MappingFileWriter;
 import fr.skytasul.reflection.mappings.files.MappingType;
 import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,28 +35,13 @@ public class MappingsShrieker {
 	 *
 	 * @param mappingType type of mappings in the output file
 	 * @param initializeFunction function that is called for each call to
-	 *        {@link #registerVersionMappings(int, int, int, Path)}. All reflection accesses made to the
+	 *        {@link #registerVersionMappings(Version, Path)}. All reflection accesses made to the
 	 *        {@link Mappings} passed as parameter to this function will be recorded and used to create
 	 *        the reduced mappings.
 	 */
 	public MappingsShrieker(@NotNull MappingType mappingType, @NotNull ReflectionInitializer initializeFunction) {
 		this.mappingType = mappingType;
 		this.initializeFunction = initializeFunction;
-	}
-
-	/**
-	 * Register the mappings used for a specific version.
-	 *
-	 * @param version the version of the mappings
-	 * @param mappingsPath path to the mappings file of this version
-	 * @throws IOException if an error happened while loading the mappings file
-	 * @throws ReflectiveOperationException if an error happened while initializing the reflection
-	 */
-	public void registerVersionMappings(@NotNull Version version, @NotNull Path mappingsPath)
-			throws IOException, ReflectiveOperationException {
-		var reader = new MappingFileReader(mappingType, Files.readAllLines(mappingsPath), version);
-		reader.parseMappings();
-		registerVersionMappings(version, reader.getParsedMappings(version));
 	}
 
 	/**
@@ -72,7 +55,7 @@ public class MappingsShrieker {
 			throws ReflectiveOperationException {
 		// First step: fill in the fake mappings with the classes/fields/methods actually needed
 		var fakeReflection = new FakeReflectionAccessor();
-		initializeFunction.initializeReflection(fakeReflection);
+		initializeFunction.initializeReflection(fakeReflection, version);
 
 		// Second step: construct reduced mappings by merging the fake one with the obfuscated names from
 		// the real one.
@@ -130,7 +113,8 @@ public class MappingsShrieker {
 	@FunctionalInterface
 	public static interface ReflectionInitializer {
 
-		void initializeReflection(@NotNull ReflectionAccessor reflection) throws ReflectiveOperationException;
+		void initializeReflection(@NotNull ReflectionAccessor reflection, @NotNull Version version)
+				throws ReflectiveOperationException;
 
 	}
 

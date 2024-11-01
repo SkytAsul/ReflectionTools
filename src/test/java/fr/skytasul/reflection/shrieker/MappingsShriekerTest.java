@@ -23,7 +23,7 @@ class MappingsShriekerTest {
 				    67:85:void voidMethod(int) -> a
 				""");
 
-		var shrieker = new MappingsShrieker(MAPPING_TYPE, mappingsToFill -> {
+		var shrieker = new MappingsShrieker(MAPPING_TYPE, (mappingsToFill, version) -> {
 			assertDoesNotThrow(() -> {
 				var clazz = mappingsToFill.getClass("some.package.SomeClass");
 				clazz.getField("stringField").get(null);
@@ -58,7 +58,7 @@ class MappingsShriekerTest {
 				    67:85:int intMethod() -> b
 				""");
 
-		var shrieker = new MappingsShrieker(MAPPING_TYPE, mappingsToFill -> {
+		var shrieker = new MappingsShrieker(MAPPING_TYPE, (mappingsToFill, version) -> {
 			mappingsToFill.getClass("some.other.package.SomeOtherClass").getMethod("intMethod");
 		});
 
