@@ -62,6 +62,17 @@ public class PipeMappings implements Mappings {
 
 			pipeClass.pipe(toClass);
 		}
+
+		for (var pipeClass : classes.values()) {
+			int subclassIndex = pipeClass.mapped.indexOf('$');
+			if (subclassIndex == -1)
+				continue;
+
+			var baseClassMapped = getClassFromMiddleName(pipeClass.mapped.substring(0, subclassIndex));
+			if (baseClassMapped.isPresent()) {
+				pipeClass.mapped = baseClassMapped.get().mapped + pipeClass.mapped.substring(subclassIndex);
+			}
+		}
 	}
 
 	@Override
