@@ -24,7 +24,7 @@ public record Version(int major, int minor, int patch) implements Comparable<Ver
 	 *
 	 * @param version
 	 * @return <code>true</code> if the current version is exactly the same as the passed version
-	 * @see {@link #equals(Object)}
+	 * @see Version#equals(Object)
 	 */
 	public boolean is(@NotNull Version version) {
 		return this.equals(version);

@@ -33,9 +33,9 @@ public class MappingsShrieker {
 	 *
 	 * @param mappingType type of mappings in the output file
 	 * @param initializeFunction function that is called for each call to
-	 *        {@link #registerVersionMappings(Version, Path)}. All reflection accesses made to the
-	 *        {@link Mappings} passed as parameter to this function will be recorded and used to create
-	 *        the reduced mappings.
+	 *        {@link MappingsShrieker#registerVersionMappings(Version, Mappings)}. All reflection
+	 *        accesses made to the {@link Mappings} passed as parameter to this function will be
+	 *        recorded and used to create the reduced mappings.
 	 */
 	public MappingsShrieker(@NotNull MappingType mappingType, @NotNull ReflectionInitializer initializeFunction) {
 		this.mappingType = mappingType;
