@@ -5,7 +5,7 @@
 
 	<groupId>fr.skytasul</groupId>
 	<artifactId>reflection-mappings-shrieker</artifactId>
-	<version>1.0.0</version>
+	<version>1.1.0</version>
 
 	<name>Reflection Mappings Shrieker</name>
 	<description>An util to reduce and merge multiple mappings into one.</description>
