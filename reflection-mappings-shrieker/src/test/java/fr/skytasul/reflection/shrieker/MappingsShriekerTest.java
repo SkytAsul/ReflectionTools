@@ -37,9 +37,7 @@ class MappingsShriekerTest {
 		assertEquals(1, shrieker.getReducedMappings().size());
 
 		assertEquals("""
-				# reflection-remapper | AVAILABLE VERSIONS
-				# reflection-remapper | 0.0.0 3-5
-				# reflection-remapper | AVAILABLE VERSIONS
+				# reflection-remapper | 0.0.0
 				some.package.SomeClass -> abc:
 				    stringField -> a
 				    voidMethod(int) -> a
@@ -68,9 +66,7 @@ class MappingsShriekerTest {
 		assertEquals(1, shrieker.getReducedMappings().size());
 
 		assertEquals("""
-				# reflection-remapper | AVAILABLE VERSIONS
-				# reflection-remapper | 0.0.0 3-4
-				# reflection-remapper | AVAILABLE VERSIONS
+				# reflection-remapper | 0.0.0
 				some.other.package.SomeOtherClass -> abd:
 				    intMethod() -> b
 				""", writeMappings(shrieker.getReducedMappings()));

@@ -43,35 +43,43 @@ class MappingFileReaderTest {
 	}
 
 	@Test
-	void testCorrectHeader() {
+	void testNoVersions() {
 		assertDoesNotThrow(() -> {
-			var reader = new MappingFileReader(mappingType, getLines("""
-				# ignored line
-				# reflection-remapper | AVAILABLE VERSIONS
-				# reflection-remapper | 1.0.0 10-20
-				# reflection-remapper | 1.1.0 20-30
-				# reflection-remapper | 1.2.0 30-40
-				# reflection-remapper | AVAILABLE VERSIONS
-					"""));
-			var versions = reader.readAvailableVersions();
+			var reader = new MappingFileReader(mappingType, getLines(""));
+			assertArrayEquals(new Version[0], reader.getAvailableVersions().toArray());
 
-			assertArrayEquals(parseArray("1.0.0", "1.1.0", "1.2.0"), versions.toArray());
+			reader = new MappingFileReader(mappingType, getLines("""
+					# ignored line
+					"""));
+			assertArrayEquals(new Version[0], reader.getAvailableVersions().toArray());
 		});
 	}
 
 	@Test
-	void testIncorrectHeader() {
+	void testVersionWithoutMappings() {
+		assertDoesNotThrow(() -> {
+			var reader = new MappingFileReader(mappingType, getLines("""
+					# reflection-remapper | 1.0.0
+					# reflection-remapper | 1.1.0
+					net.minecraft.world.entity.Interaction -> abc:
+					"""));
+			assertArrayEquals(parseArray("1.0.0", "1.1.0"), reader.getAvailableVersions().toArray());
+		});
+	}
+
+	@Test
+	void testIncorrectVersionHeaders() {
 		assertThrows(IllegalArgumentException.class, () -> {
 			new MappingFileReader(mappingType, getLines("""
-					# nothing here
-					""")).readAvailableVersions();
+					# no version information
+					net.minecraft.world.entity.Interaction -> abc:
+					""")).getAvailableVersions();
 		});
 		assertThrows(IllegalArgumentException.class, () -> {
 			new MappingFileReader(mappingType, getLines("""
-					# reflection-remapper | AVAILABLE VERSIONS
-					# reflection-remapper | 1.0.0 10-20
-					# no end to the versions
-					""")).readAvailableVersions();
+					# reflection-remapper | a.b.c
+					net.minecraft.world.entity.Interaction -> abc:
+					""")).getAvailableVersions();
 		});
 	}
 
@@ -80,14 +88,13 @@ class MappingFileReaderTest {
 		assertDoesNotThrow(() -> {
 			var reader = new MappingFileReader(mappingType, getLines("""
 					# ignored line
-					# reflection-remapper | AVAILABLE VERSIONS
-					# reflection-remapper | 1.0.0 10-20
-					# reflection-remapper | 1.1.0 20-30
-					# reflection-remapper | 1.2.0 30-40
-					# reflection-remapper | AVAILABLE VERSIONS
+					# reflection-remapper | 1.0.0
+					net.minecraft.world.entity.Interaction -> abc:
+					# reflection-remapper | 1.1.0
+					net.minecraft.world.entity.Interaction -> abc:
+					# reflection-remapper | 1.2.0
+					net.minecraft.world.entity.Interaction -> abc:
 						"""));
-			reader.readAvailableVersions();
-
 			assertFalse(reader.keepOnlyVersion(new Version(1, 3, 0)));
 			assertTrue(reader.keepOnlyVersion(new Version(1, 1, 0)));
 
@@ -100,14 +107,10 @@ class MappingFileReaderTest {
 		assertDoesNotThrow(() -> {
 			var reader = new MappingFileReader(mappingType, getLines("""
 					# ignored line
-					# reflection-remapper | AVAILABLE VERSIONS
-					# reflection-remapper | 1.0.0 10-20
-					# reflection-remapper | 1.1.0 20-30
-					# reflection-remapper | 1.2.0 30-40
-					# reflection-remapper | AVAILABLE VERSIONS
+					# reflection-remapper | 1.0.0
+					# reflection-remapper | 1.1.0
+					# reflection-remapper | 1.2.0
 						"""));
-			reader.readAvailableVersions();
-
 			var versionMatch = reader.keepBestMatchedVersion(new Version(1, 1, 2));
 			assertEquals(new Version(1, 1, 0), versionMatch.orElseThrow());
 
@@ -119,16 +122,13 @@ class MappingFileReaderTest {
 	void testParseMappings() {
 		assertDoesNotThrow(() -> {
 			var reader = new MappingFileReader(mappingType, getLines("""
-					# reflection-remapper | AVAILABLE VERSIONS
-					# reflection-remapper | 1.0.0 4-5
-					# reflection-remapper | 1.1.0 6-7
-					# reflection-remapper | AVAILABLE VERSIONS
+					# reflection-remapper | 1.0.0
 					net.minecraft.world.entity.Interaction -> abc:
 					    java.lang.String stringField -> a
+					# reflection-remapper | 1.1.0
 					net.minecraft.world.entity.Interaction -> abd:
 					    java.lang.String stringField -> b
 						"""));
-			reader.readAvailableVersions();
 			reader.parseMappings();
 
 			assertNotNull(reader.getParsedMappings(new Version(1, 0, 0)));

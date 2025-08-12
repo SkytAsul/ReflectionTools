@@ -6,7 +6,6 @@ import fr.skytasul.reflection.Version;
 import fr.skytasul.reflection.mappings.Mappings;
 import fr.skytasul.reflection.mappings.RealMappings;
 import fr.skytasul.reflection.mappings.files.ProguardMapping;
-import fr.skytasul.reflection.shrieker.MappingFileWriter;
 import org.junit.jupiter.api.Test;
 import java.io.StringWriter;
 import java.lang.reflect.Type;
@@ -28,9 +27,7 @@ class MappingFileWriterTest {
 		assertDoesNotThrow(new MappingFileWriter(mappingType, writer, Map.of(Version.parse("1.2.3"), mappings))::writeAll);
 
 		assertEquals("""
-				# reflection-remapper | AVAILABLE VERSIONS
-				# reflection-remapper | 1.2.3 3-4
-				# reflection-remapper | AVAILABLE VERSIONS
+				# reflection-remapper | 1.2.3
 				java.lang.String -> a:
 				    charAt(int) -> b
 				""", writer.toString());
@@ -53,14 +50,12 @@ class MappingFileWriterTest {
 		assertDoesNotThrow(new MappingFileWriter(mappingType, writer, allMappings)::writeAll);
 
 		assertEquals("""
-				# reflection-remapper | AVAILABLE VERSIONS
-				# reflection-remapper | 1.2.1 4-5
-				# reflection-remapper | 1.2.0 6-7
-				# reflection-remapper | AVAILABLE VERSIONS
-				java.lang.String -> c:
-				    charAt(int) -> d
+				# reflection-remapper | 1.2.0
 				java.lang.String -> a:
 				    charAt(int) -> b
+				# reflection-remapper | 1.2.1
+				java.lang.String -> c:
+				    charAt(int) -> d
 				""", writer.toString());
 	}
 

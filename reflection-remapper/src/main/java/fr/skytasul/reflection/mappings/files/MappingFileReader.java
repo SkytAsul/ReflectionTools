@@ -3,7 +3,6 @@ package fr.skytasul.reflection.mappings.files;
 import fr.skytasul.reflection.Version;
 import fr.skytasul.reflection.mappings.Mappings;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -13,14 +12,11 @@ import java.util.regex.Pattern;
 
 public class MappingFileReader {
 
-	public static final String VERSIONS_NOTICE = "# reflection-remapper | AVAILABLE VERSIONS";
 	private static final Pattern VERSION_PATTERN = Pattern.compile(
-			"# reflection-remapper \\| (?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+) (?<firstline>\\d+)-(?<lastline>\\d+)");
+			"# reflection-remapper \\| (?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)");
 
 	private final @NotNull MappingType mappingType;
-	private final @NotNull List<String> lines;
-
-	private @Nullable List<VersionPart> mappings;
+	private final @NotNull List<VersionPart> mappings;
 
 	/**
 	 * Creates a reader for a composite mappings file.
@@ -31,7 +27,8 @@ public class MappingFileReader {
 	 */
 	public MappingFileReader(@NotNull MappingType mappingType, @NotNull List<String> lines) throws IOException {
 		this.mappingType = mappingType;
-		this.lines = lines;
+
+		this.mappings = readParts(lines);
 	}
 
 	/**
@@ -42,57 +39,22 @@ public class MappingFileReader {
 	 * @param version version of the mappings
 	 * @throws IOException
 	 */
-	public MappingFileReader(@NotNull MappingType mappingType, @NotNull List<String> lines,
-			@NotNull Version version) throws IOException {
-		this(mappingType, lines);
+	public MappingFileReader(@NotNull MappingType mappingType, @NotNull List<String> lines, @NotNull Version version)
+			throws IOException {
+		this.mappingType = mappingType;
 
-		mappings = List.of(new VersionPart(version, -1, -1));
-	}
-
-	public @NotNull List<Version> readAvailableVersions() {
-		if (mappings != null)
-			throw new IllegalStateException("Versions are already known");
-
-		Matcher versionMatcher;
-		for (String line : lines) {
-			if (line.equals(VERSIONS_NOTICE)) {
-				if (mappings == null)
-					mappings = new ArrayList<>();
-				else
-					return getAvailableVersions();
-			} else if (mappings != null && (versionMatcher = VERSION_PATTERN.matcher(line)).matches()) {
-				mappings.add(new VersionPart(
-						new Version(
-								Integer.parseInt(versionMatcher.group("major")),
-								Integer.parseInt(versionMatcher.group("minor")),
-								Integer.parseInt(versionMatcher.group("patch"))),
-						Integer.parseInt(versionMatcher.group("firstline")),
-						Integer.parseInt(versionMatcher.group("lastline"))));
-			}
-		}
-
-		if (mappings == null)
-			throw new IllegalArgumentException("File does not contain version information");
-
-		// if we are here, we didn't return at the end of the version informations block: error
-		throw new IllegalArgumentException("Invalid syntax: no end to the version informations");
+		this.mappings = List.of(new VersionPart(version, lines));
 	}
 
 	public @NotNull List<Version> getAvailableVersions() {
-		if (mappings == null)
-			throw new IllegalStateException("No versions are available for now");
-
 		return mappings.stream().map(x -> x.version).sorted().toList();
 	}
 
 	public boolean keepOnlyVersion(@NotNull Version version) {
-		for (var mapping : mappings) {
-			if (version.equals(mapping.version)) {
-				mappings = List.of(mapping);
-				return true;
-			}
-		}
-		return false;
+		if (!mappings.stream().anyMatch(part -> part.version.equals(version)))
+			return false;
+		mappings.removeIf(part -> !part.version.equals(version));
+		return true;
 	}
 
 	public @NotNull Optional<Version> keepBestMatchedVersion(@NotNull Version targetVersion) {
@@ -103,33 +65,52 @@ public class MappingFileReader {
 	}
 
 	public void parseMappings() {
-		for (var version : mappings) {
-			List<String> linesToParse;
-			if (version.firstLine == -1 && version.lastLine == -1)
-				// plain mappings file containing only one version
-				linesToParse = lines;
-			else
-				// composite file
-				linesToParse = lines.subList(version.firstLine, version.lastLine + 1);
-			version.mappings = mappingType.parse(linesToParse);
-		}
+		for (var version : mappings)
+			version.mappings = mappingType.parse(version.lines);
 	}
 
 	public @NotNull Mappings getParsedMappings(@NotNull Version version) {
 		return mappings.stream().filter(x -> x.version.equals(version)).findAny().orElseThrow().mappings;
 	}
 
-	private class VersionPart {
+	private static class VersionPart {
 		private final Version version;
-		private final int firstLine;
-		private final int lastLine;
+		private final List<String> lines;
 		private Mappings mappings;
 
-		private VersionPart(Version version, int firstLine, int lastLine) {
+		private VersionPart(Version version, List<String> lines) {
 			this.version = version;
-			this.firstLine = firstLine;
-			this.lastLine = lastLine;
+			this.lines = lines;
 		}
+	}
+
+	private static @NotNull List<VersionPart> readParts(@NotNull List<String> lines) {
+		List<VersionPart> parts = new ArrayList<>();
+
+		VersionPart currentPart = null;
+		for (String line : lines) {
+			Matcher versionMatcher = VERSION_PATTERN.matcher(line);
+			if (versionMatcher.matches()) {
+				if (currentPart != null)
+					parts.add(currentPart);
+				currentPart = new VersionPart(new Version(
+						Integer.parseInt(versionMatcher.group("major")),
+						Integer.parseInt(versionMatcher.group("minor")),
+						Integer.parseInt(versionMatcher.group("patch"))), new ArrayList<>());
+			} else if (line.startsWith("#") || line.isBlank()) {
+				continue; // ignore comments
+			} else {
+				if (currentPart == null)
+					throw new IllegalArgumentException("File should start with a version information");
+
+				currentPart.lines.add(line);
+			}
+		}
+
+		if (currentPart != null)
+			parts.add(currentPart);
+
+		return parts;
 	}
 
 	/**

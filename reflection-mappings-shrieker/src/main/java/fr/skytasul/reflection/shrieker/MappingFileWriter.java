@@ -2,7 +2,6 @@ package fr.skytasul.reflection.shrieker;
 
 import fr.skytasul.reflection.Version;
 import fr.skytasul.reflection.mappings.Mappings;
-import fr.skytasul.reflection.mappings.files.MappingFileReader;
 import fr.skytasul.reflection.mappings.files.MappingType;
 import org.jetbrains.annotations.NotNull;
 import java.io.BufferedWriter;
@@ -39,31 +38,13 @@ public class MappingFileWriter {
 				path != null ? Files.newBufferedWriter(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
 						: new BufferedWriter(this.writer)) {
 
-			writeHeader(writer);
-			for (var mapping : mappings.values())
-				type.write(writer, mapping);
+			var versions = mappings.keySet().stream().sorted().toList();
+			for (var version : versions) {
+				writer.append("# reflection-remapper | %s".formatted(version.toString()));
+				writer.newLine();
+				type.write(writer, mappings.get(version));
+			}
 		}
-	}
-
-	private void writeHeader(@NotNull BufferedWriter writer) throws IOException {
-		writer.append(MappingFileReader.VERSIONS_NOTICE);
-		writer.newLine();
-
-		int headerLength = 1 + mappings.size() + 1;
-		int lastLine = headerLength - 1;
-		for (var mapping : mappings.entrySet()) {
-			int mappingLength =
-					mapping.getValue().getClasses().stream()
-							.mapToInt(c -> c.getFields().size() + c.getMethods().size() + 1)
-							.sum();
-			writer.append("# reflection-remapper | %s %d-%d".formatted(mapping.getKey(), lastLine + 1,
-					lastLine + mappingLength));
-			writer.newLine();
-			lastLine += mappingLength;
-		}
-
-		writer.append(MappingFileReader.VERSIONS_NOTICE);
-		writer.newLine();
 	}
 
 }
