@@ -10,6 +10,7 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -160,16 +161,19 @@ public class ProguardMapping implements MappingType {
 
 	@Override
 	public void write(@NotNull BufferedWriter writer, @NotNull Mappings mappings) throws IOException {
-		for (var mappedClass : mappings.getClasses()) {
+		for (var mappedClass : mappings.getClasses().stream()
+				.sorted(Comparator.comparing(Mappings.ClassMapping::getOriginalName)).toList()) {
 			writer.append("%s -> %s:".formatted(mappedClass.getOriginalName(), mappedClass.getMappedName()));
 			writer.newLine();
 
-			for (var mappedField : mappedClass.getFields()) {
+			for (var mappedField : mappedClass.getFields().stream()
+					.sorted(Comparator.comparing(Mappings.ClassMapping.FieldMapping::getOriginalName)).toList()) {
 				writer.append("    %s -> %s".formatted(mappedField.getOriginalName(), mappedField.getMappedName()));
 				writer.newLine();
 			}
 
-			for (var mappedMethod : mappedClass.getMethods()) {
+			for (var mappedMethod : mappedClass.getMethods().stream()
+					.sorted(Comparator.comparing(Mappings.ClassMapping.MethodMapping::getOriginalName)).toList()) {
 				String parameters = Stream.of(mappedMethod.getParameterTypes())
 						.map(parameter -> parameter.getTypeName())
 						.collect(Collectors.joining(","));

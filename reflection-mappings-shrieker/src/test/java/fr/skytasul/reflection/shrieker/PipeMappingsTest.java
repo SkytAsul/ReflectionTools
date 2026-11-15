@@ -64,12 +64,12 @@ class PipeMappingsTest {
 
 		var pipe = new PipeMappings(mappingsA, mappingsB);
 		assertEquals("""
-				some.class.A -> another.X:
-				    stringField -> mmhTasty
-				    voidMethod(some.class.A) -> a
-				    unmappedMethod(some.class.A) -> k
 				a.class.OwO -> owo:
 				    hmmm -> okay
+				some.class.A -> another.X:
+				    stringField -> mmhTasty
+				    unmappedMethod(some.class.A) -> k
+				    voidMethod(some.class.A) -> a
 				""", writeMappings(MAPPING_TYPE, pipe));
 	}
 
