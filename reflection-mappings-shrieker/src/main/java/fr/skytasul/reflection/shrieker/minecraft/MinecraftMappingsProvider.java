@@ -22,9 +22,9 @@ public class MinecraftMappingsProvider {
 			"https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/{VERSION}/mappings/server.txt";
 	private static final String SPIGOT_VERSION_URL = "https://hub.spigotmc.org/versions/{VERSION}.json";
 	private static final String SPIGOT_INFO_URL =
-			"https://hub.spigotmc.org/stash/projects/SPIGOT/repos/builddata/raw/info.json?at={COMMIT}";
+			"https://hub.spigotmc.org/stash/rest/api/1.0/projects/SPIGOT/repos/builddata/raw/info.json?at={COMMIT}";
 	private static final String SPIGOT_MAPPING_URL =
-			"https://hub.spigotmc.org/stash/projects/SPIGOT/repos/builddata/raw/mappings/{MAPPING}?at={COMMIT}";
+			"https://hub.spigotmc.org/stash/rest/api/1.0/projects/SPIGOT/repos/builddata/raw/mappings/{MAPPING}?at={COMMIT}";
 
 	private static final ProguardMapping PROGUARD_MAPPING = new ProguardMapping(true);
 	private static final SpigotClassMapping SPIGOT_CLASS_MAPPING = new SpigotClassMapping(true);
